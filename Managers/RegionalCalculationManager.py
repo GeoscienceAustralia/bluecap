@@ -372,6 +372,7 @@ class RegionalCalculationManager():
           pl.show()    
         else:
           filename = theProblemManager.outputPrefix+"."+theProblemManager.outputType
+          print "Saving: ", filename
           SaveMap(filename, mineValueMap)
         
         return 

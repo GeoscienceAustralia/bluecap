@@ -22,7 +22,7 @@ Please refer to individual components for more details.
 # IO
 from IO.XML import NewXMLTree,GetXMLTreeRoot,SaveXMLFile,LoadXMLFile
 from IO.XML import HasChild,GetChild,GetChildren,AddChild
-from IO.XML import GetAttributeString,GetAttributeStringOrDefault,SetAttributeString
+from IO.XML import GetAttributeString,GetAttributeFileString,GetAttributeStringOrDefault,SetAttributeString
 from IO.XML import PrettyXMLFormat
 
 # Managers
@@ -111,7 +111,7 @@ class ProblemManager():
       # Output - eventually will make into a manager
       if(HasChild(rootNode,"Output")):
         outputNode = GetChild(rootNode,"Output")
-        self.outputPrefix = GetAttributeString(outputNode,"prefix")
+        self.outputPrefix = GetAttributeFileString(outputNode,"prefix")
         self.outputType = GetAttributeStringOrDefault(outputNode,"type","")
         
       # Regional calculation - optional

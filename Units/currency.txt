@@ -1,0 +1,7 @@
+# Currency conversion file
+# Assumes constant conversion rate
+AUD = 0.73 * USD
+EUR = AUD/0.64 
+CNY = AUD/5.05
+JPY = AUD/82.7 
+

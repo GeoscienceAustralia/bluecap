@@ -394,7 +394,7 @@ class MiningSystemDataManager():
           
           if (switchingDepth >= maxD):
           
-            print "Open cut only"
+            #print "Open cut only"
             # all open cut
             self.materialMined[self.mineStartupTime:] = ocTotalMaterialProductionRate
             
@@ -416,12 +416,12 @@ class MiningSystemDataManager():
             
             
             self.materialMined[-1] =  self.oreMined[-1]/fractionOre
-            print "self.materialMined[-1]",self.materialMined[-1],dd,maxD
+            #print "self.materialMined[-1]",self.materialMined[-1],dd,maxD
 
             
           else:
           
-            print "Mixed opencut and underground"
+            #print "Mixed opencut and underground"
             
             self.miningMethod = "OCUG"
             self.ugMaterialMined = np.zeros(self.mineLife)
@@ -480,8 +480,8 @@ class MiningSystemDataManager():
         maxD = mineManager.theOreBody.cover + mineManager.theOreBody.height
         
         self.oreMined[self.mineStartupTime:] = self.materialMined[self.mineStartupTime:]
-        print self.mineStartupTime-1, self.mineLife+1-self.mineStartupTime,self.mineLife
-        print len(self.depths[self.mineStartupTime-1:]),len(self.depths)
+        #print self.mineStartupTime-1, self.mineLife+1-self.mineStartupTime,self.mineLife
+        #print len(self.depths[self.mineStartupTime-1:]),len(self.depths)
         self.depths[self.mineStartupTime-1:] = np.linspace(minD,maxD,self.mineLife+1-self.mineStartupTime )
     
       self.wasteMined =  self.materialMined - self.oreMined

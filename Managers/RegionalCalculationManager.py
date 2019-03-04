@@ -29,7 +29,7 @@ import time
 from Common.Common import Todo,Fixme
 
 from IO.XML import HasChild,GetChild,AddChild,GetChildren
-from IO.XML import GetAttributeString,GetAttributeFileString,GetAttributeValue, SetAttributeString,GetXMLTag
+from IO.XML import HasAttribute,GetAttributeString,GetAttributeFileString,GetAttributeValue,GetAttributeVector, SetAttributeString,GetXMLTag
 
 # Managers
 
@@ -72,6 +72,9 @@ class RegionalCalculationManager():
       self.roadDistanceMapFile = ""
       self.railDistanceToPortMapFile = ""
       self.roadDistanceToPortMapFile = ""
+      
+      self.dataBoundingBox = []
+      self.outputBoundingBox = []
 
       self.stateIdsMapFile = ""
 
@@ -91,6 +94,11 @@ class RegionalCalculationManager():
       self.roadDistanceToPortMapFile = GetAttributeFileString(regionalDataNode,"roadTransportationDistance")
 
       self.stateIdsMapFile = GetAttributeFileString(regionalDataNode,"states")
+      
+      if(HasAttribute(regionalDataNode,"dataBoundingBox")):
+        self.dataBoundingBox = GetAttributeVector(regionalDataNode,"dataBoundingBox")
+      if(HasAttribute(regionalDataNode,"outputBoundingBox")):
+        self.outputBoundingBox = GetAttributeVector(regionalDataNode,"outputBoundingBox")
   
         
     def WriteXMLNode(self, node):
@@ -118,8 +126,50 @@ class RegionalCalculationManager():
     
       return 
     
+    def ApplyOutputBoundingBoxMask(self,stateIdsMap,replaceValue = -1):   
+      # masks off regions outside the outputBoundingBox
+      if(len(self.dataBoundingBox) == 4 and len(self.outputBoundingBox) == 4):
+          dataMinLat,dataMinLon,dataMaxLat,dataMaxLon = self.dataBoundingBox[:]
+          outputMinLat,outputMinLon,outputMaxLat,outputMaxLon = self.outputBoundingBox[:]
+          
+          nLat,nLon = stateIdsMap.shape
+          minLatIndx = int( np.floor( nLat* (outputMinLat-dataMinLat)/(dataMaxLat-dataMinLat) ) )
+          maxLatIndx = int( np.ceil( nLat* (outputMaxLat-dataMinLat)/(dataMaxLat-dataMinLat) ) )
+          
+          minLonIndx = int( np.floor( nLat* (outputMinLon-dataMinLon)/(dataMaxLon-dataMinLon) ) )
+          maxLonIndx = int( np.ceil( nLat* (outputMaxLon-dataMinLon)/(dataMaxLon-dataMinLon)  ) )
+          
+          
+          if(minLatIndx > 0 ):
+            stateIdsMap[:minLatIndx,:] = replaceValue
+          
+          if(outputMaxLat < dataMaxLat):
+            stateIdsMap[maxLatIndx:,:] = replaceValue
         
+          
+          if(minLonIndx > 0 ):
+            stateIdsMap[:,:minLonIndx] = replaceValue
+          
+          if(outputMaxLon < dataMaxLon):
+            stateIdsMap[:,maxLonIndx:] = replaceValue
     
+    
+    def ClipToOutputBounds(self,data):   
+      # clips the output to within the bounding box
+      if(len(self.dataBoundingBox) == 4 and len(self.outputBoundingBox) == 4):
+          dataMinLat,dataMinLon,dataMaxLat,dataMaxLon = self.dataBoundingBox[:]
+          outputMinLat,outputMinLon,outputMaxLat,outputMaxLon = self.outputBoundingBox[:]
+          
+          nLat,nLon = data.shape
+          minLatIndx = int( np.floor( nLat* (outputMinLat-dataMinLat)/(dataMaxLat-dataMinLat) ) )
+          maxLatIndx = int( np.ceil( nLat* (outputMaxLat-dataMinLat)/(dataMaxLat-dataMinLat) ) )
+          
+          minLonIndx = int( np.floor( nLat* (outputMinLon-dataMinLon)/(dataMaxLon-dataMinLon) ) )
+          maxLonIndx = int( np.ceil( nLat* (outputMaxLon-dataMinLon)/(dataMaxLon-dataMinLon)  ) )
+          
+          data = data[minLatIndx:maxLatIndx,minLonIndx:maxLonIndx]
+      return data
+            
     #########################
     ## NPV calculation
     
@@ -256,6 +306,8 @@ class RegionalCalculationManager():
           timesList.append(["startMaps", time.time()])
 
         stateIdsMap =  LoadMap(stateIdsMapFile)
+        self.ApplyOutputBoundingBoxMask(stateIdsMap) 
+        
 
         countryIndxs = stateIdsMap >= 0.0
 
@@ -327,6 +379,10 @@ class RegionalCalculationManager():
 
 
         mineValueMap[stateIdsMap< 0.0] = np.nan  
+        
+        # clip to bounding box
+        if(len(self.dataBoundingBox) == 4 and len(self.outputBoundingBox) == 4):
+          mineValueMap = self.ClipToOutputBounds(mineValueMap)
 
 
         if doTimer:
@@ -372,7 +428,7 @@ class RegionalCalculationManager():
           pl.show()    
         else:
           filename = theProblemManager.outputPrefix+"."+theProblemManager.outputType
-          print "Saving: ", filename
+          #print "Saving: ", filename
           SaveMap(filename, mineValueMap)
         
         return 
@@ -515,6 +571,7 @@ class RegionalCalculationManager():
           timesList.append(["startMaps", time.time()])
 
         stateIdsMap =  LoadMap(stateIdsMapFile)
+        self.ApplyOutputBoundingBoxMask(stateIdsMap) 
 
         countryIndxs = stateIdsMap >= 0.0
 
@@ -589,6 +646,9 @@ class RegionalCalculationManager():
         
         revenueCostRatioMap[stateIdsMap< 0.0] = np.nan  
 
+        # clip to bounding box
+        if(len(self.dataBoundingBox) == 4 and len(self.outputBoundingBox) == 4):
+          revenueCostRatioMap = self.ClipToOutputBounds(revenueCostRatioMap)
 
 
         if doTimer:
@@ -815,6 +875,7 @@ class RegionalCalculationManager():
           timesList.append(["startMaps", time.time()])
 
         stateIdsMap =  LoadMap(stateIdsMapFile)
+        self.ApplyOutputBoundingBoxMask(stateIdsMap) 
 
         countryIndxs = stateIdsMap >= 0.0
 
@@ -923,6 +984,11 @@ class RegionalCalculationManager():
         breakEvenFactor[countryIndxs] = 1+(-b + np.sqrt( b*b-4*a*c ) )/(2*a+1e-64)
 
         breakEvenFactor[stateIdsMap< 0.0] = np.nan  
+        
+        
+        # clip to bounding box
+        if(len(self.dataBoundingBox) == 4 and len(self.outputBoundingBox) == 4):
+          breakEvenFactor = self.ClipToOutputBounds(breakEvenFactor)
 
         if doTimer:
           #transportTime = time.time()

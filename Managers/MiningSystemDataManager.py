@@ -343,7 +343,12 @@ class MiningSystemDataManager():
       self.wasteMined = np.zeros(self.mineLife)
       self.depths = np.zeros(self.mineLife)
       
-      self.materialMined[0] =self.mineCapacity*self.actualMineStartupTime
+      if(self.actualMineStartupTime > 1):
+        tt = int( np.floor( self.actualMineStartupTime ) )
+        self.materialMined[:tt-1] =self.mineCapacity
+        self.materialMined[tt-1] =self.mineCapacity*(self.actualMineStartupTime-tt)
+      else:
+        self.materialMined[0] =self.mineCapacity*self.actualMineStartupTime
       
       self.materialMined[self.mineStartupTime:-1] = self.mineCapacity   # constant in all years but last
       self.materialMined[-1] =  self.orebodyMass - self.mineCapacity*(self.mineLife-self.mineStartupTime-1)  # remainder in last year
@@ -396,6 +401,8 @@ class MiningSystemDataManager():
           
             #print "Open cut only"
             # all open cut
+            self.materialMined[:self.mineStartupTime] = self.mineCapacity
+            self.materialMined[0] = self.mineCapacity*(self.actualMineStartupTime-np.floor(self.actualMineStartupTime) )
             self.materialMined[self.mineStartupTime:] = ocTotalMaterialProductionRate
             
             # ore mined varies over the years (but on average is equal to the mine ore production capacity) - this may not be needed. 

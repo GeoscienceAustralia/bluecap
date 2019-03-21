@@ -136,8 +136,8 @@ class RegionalCalculationManager():
           minLatIndx = int( np.floor( nLat* (outputMinLat-dataMinLat)/(dataMaxLat-dataMinLat) ) )
           maxLatIndx = int( np.ceil( nLat* (outputMaxLat-dataMinLat)/(dataMaxLat-dataMinLat) ) )
           
-          minLonIndx = int( np.floor( nLat* (outputMinLon-dataMinLon)/(dataMaxLon-dataMinLon) ) )
-          maxLonIndx = int( np.ceil( nLat* (outputMaxLon-dataMinLon)/(dataMaxLon-dataMinLon)  ) )
+          minLonIndx = int( np.floor( nLon* (outputMinLon-dataMinLon)/(dataMaxLon-dataMinLon) ) )
+          maxLonIndx = int( np.ceil( nLon* (outputMaxLon-dataMinLon)/(dataMaxLon-dataMinLon)  ) )
           
           
           if(minLatIndx > 0 ):
@@ -164,8 +164,8 @@ class RegionalCalculationManager():
           minLatIndx = int( np.floor( nLat* (outputMinLat-dataMinLat)/(dataMaxLat-dataMinLat) ) )
           maxLatIndx = int( np.ceil( nLat* (outputMaxLat-dataMinLat)/(dataMaxLat-dataMinLat) ) )
           
-          minLonIndx = int( np.floor( nLat* (outputMinLon-dataMinLon)/(dataMaxLon-dataMinLon) ) )
-          maxLonIndx = int( np.ceil( nLat* (outputMaxLon-dataMinLon)/(dataMaxLon-dataMinLon)  ) )
+          minLonIndx = int( np.floor( nLon* (outputMinLon-dataMinLon)/(dataMaxLon-dataMinLon) ) )
+          maxLonIndx = int( np.ceil( nLon* (outputMaxLon-dataMinLon)/(dataMaxLon-dataMinLon)  ) )
           
           data = data[minLatIndx:maxLatIndx,minLonIndx:maxLonIndx]
       return data
@@ -177,6 +177,7 @@ class RegionalCalculationManager():
     
         doPlots = (theProblemManager.outputType == "")
 
+        doAll = (theProblemManager.outputType == "all")
         # profiling
         doTimer = False
         timesList = []
@@ -309,12 +310,18 @@ class RegionalCalculationManager():
         self.ApplyOutputBoundingBoxMask(stateIdsMap) 
         
 
-        countryIndxs = stateIdsMap >= 0.0
 
         ###################################
         
         if(coverDepthMapFile):
           coverMap =  LoadMap(coverDepthMapFile)
+          
+          # for MD basin only - remove
+          cc = coverMap==0
+          cc[5000::,:] = 0 
+          cc[:,5000::] = 0 
+          stateIdsMap[cc] = -1
+          
           # bound cover map
           coverMap[coverMap > coverMax] = coverMax
           coverMap[coverMap < coverMin] = coverMin
@@ -326,6 +333,9 @@ class RegionalCalculationManager():
           coverMap[:] = 25 # + 1.*XX - 2*YY
 
           coverMap = 25  + 1.*XX - 2*YY
+          
+          
+        countryIndxs = stateIdsMap >= 0.0
 
         mineValueMap = np.zeros(coverMap.shape)
 
@@ -337,6 +347,20 @@ class RegionalCalculationManager():
           mineValueFunc = interpolate.interp1d(coverDepths,stateMineValues[stateStrs[i]])
           mineValueMap[stateIndxs] = mineValueFunc(coverMap[stateIndxs])
 
+        
+        if(doAll):
+          filename = theProblemManager.outputPrefix+"_mineValue.npy"  
+          #print "Saving: ", filename
+          SaveMap(filename, mineValueMap)
+          
+          filename = theProblemManager.outputPrefix+"_mineValueNT.npy"  
+          NTValueFunc = interpolate.interp1d(coverDepths,stateMineValues["NT"])
+          
+          dd = np.zeros(coverMap.shape)
+          dd[countryIndxs] = NTValueFunc(coverMap[countryIndxs])
+          #print "Saving: ", filename
+          SaveMap(filename, dd)
+
         if doTimer:
           #mineValueFuncTime = time.time()
           timesList.append(["mineValue", time.time()])
@@ -344,6 +368,13 @@ class RegionalCalculationManager():
         # Water Expenses
         distanceToWater =  LoadMap(waterDistanceMapFile)
         mineValueMap[countryIndxs] -=  taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalWaterExpenses(theProblemManager,distanceToWater[countryIndxs])
+
+        if(doAll):
+          filename = theProblemManager.outputPrefix+"_waterCost.npy"  
+          dd = np.zeros(coverMap.shape)
+          dd[countryIndxs] = taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalWaterExpenses(theProblemManager,distanceToWater[countryIndxs])
+          #print "Saving: ", filename
+          SaveMap(filename, dd)
 
         if doTimer:
           #waterTime = time.time()
@@ -354,6 +385,12 @@ class RegionalCalculationManager():
         distanceToPower =  LoadMap(powerDistanceMapFile)
         mineValueMap[countryIndxs] -=  taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalPowerExpenses(distanceToPower[countryIndxs])
 
+        if(doAll):
+          filename = theProblemManager.outputPrefix+"_powerCost.npy"  
+          dd = np.zeros(coverMap.shape)
+          dd[countryIndxs] = taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalPowerExpenses(distanceToPower[countryIndxs])
+          #print "Saving: ", filename
+          SaveMap(filename, dd)
 
         if doTimer:
           #powerTime = time.time()
@@ -370,6 +407,16 @@ class RegionalCalculationManager():
                                                               distanceToRoad[countryIndxs], roadTransportationDistance[countryIndxs], \
                                                               distanceToRail[countryIndxs], railTransporationDistance[countryIndxs], \
                                                               coverMap[countryIndxs],concentrateCapacityFunc,concentrateDiscountedTotalMassFunc)
+
+        if(doAll):
+          filename = theProblemManager.outputPrefix+"_transportCost.npy"  
+          dd = np.zeros(coverMap.shape)
+          dd[countryIndxs] = taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalTransportationExpenses( \
+                                                              distanceToRoad[countryIndxs], roadTransportationDistance[countryIndxs], \
+                                                              distanceToRail[countryIndxs], railTransporationDistance[countryIndxs], \
+                                                              coverMap[countryIndxs],concentrateCapacityFunc,concentrateDiscountedTotalMassFunc)
+          #print "Saving: ", filename
+          SaveMap(filename, dd)
 
 
         if doTimer:
@@ -428,6 +475,10 @@ class RegionalCalculationManager():
           pl.show()    
         else:
           filename = theProblemManager.outputPrefix+"."+theProblemManager.outputType
+          
+          if(doAll):
+            filename = theProblemManager.outputPrefix+".npy"
+            
           #print "Saving: ", filename
           SaveMap(filename, mineValueMap)
         

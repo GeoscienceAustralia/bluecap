@@ -317,10 +317,10 @@ class RegionalCalculationManager():
           coverMap =  LoadMap(coverDepthMapFile)
           
           # for MD basin only - remove
-          cc = coverMap==0
-          cc[5000::,:] = 0 
-          cc[:,5000::] = 0 
-          stateIdsMap[cc] = -1
+          #cc = coverMap==0
+          #cc[5000::,:] = 0 
+          #cc[:,5000::] = 0 
+          #stateIdsMap[cc] = -1
           
           # bound cover map
           coverMap[coverMap > coverMax] = coverMax

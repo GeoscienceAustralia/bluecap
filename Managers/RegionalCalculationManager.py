@@ -47,7 +47,11 @@ def LoadMap(filename):
   return rv
 
 
-def SaveMap(filename, data):
+def SaveMap(filename, data, reportRange):
+
+  if(reportRange):
+    np.savetxt(filename+"_range.txt",[np.nanmin(data), np.nanmax(data)])
+    
   if(filename[-3:] in ["jpg","tif","png"]  or  filename[-4:] == "tiff"):
 	pl.imsave(filename,data,origin="lower")
   elif( filename[-3:] == "npy"):
@@ -56,6 +60,7 @@ def SaveMap(filename, data):
 	np.savetxt(filename,data)
   else:
 	print "Error unrecognized output type: ", filename
+	
   return 0  
 
 class RegionalCalculationManager():
@@ -351,7 +356,7 @@ class RegionalCalculationManager():
         if(doAll):
           filename = theProblemManager.outputPrefix+"_mineValue.npy"  
           #print "Saving: ", filename
-          SaveMap(filename, mineValueMap)
+          SaveMap(filename, mineValueMap,False)
           
           filename = theProblemManager.outputPrefix+"_mineValueNT.npy"  
           NTValueFunc = interpolate.interp1d(coverDepths,stateMineValues["NT"])
@@ -359,7 +364,7 @@ class RegionalCalculationManager():
           dd = np.zeros(coverMap.shape)
           dd[countryIndxs] = NTValueFunc(coverMap[countryIndxs])
           #print "Saving: ", filename
-          SaveMap(filename, dd)
+          SaveMap(filename, dd,False)
 
         if doTimer:
           #mineValueFuncTime = time.time()
@@ -374,7 +379,7 @@ class RegionalCalculationManager():
           dd = np.zeros(coverMap.shape)
           dd[countryIndxs] = taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalWaterExpenses(theProblemManager,distanceToWater[countryIndxs])
           #print "Saving: ", filename
-          SaveMap(filename, dd)
+          SaveMap(filename, dd,False)
 
         if doTimer:
           #waterTime = time.time()
@@ -390,7 +395,7 @@ class RegionalCalculationManager():
           dd = np.zeros(coverMap.shape)
           dd[countryIndxs] = taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalPowerExpenses(distanceToPower[countryIndxs])
           #print "Saving: ", filename
-          SaveMap(filename, dd)
+          SaveMap(filename, dd,False)
 
         if doTimer:
           #powerTime = time.time()
@@ -416,7 +421,7 @@ class RegionalCalculationManager():
                                                               distanceToRail[countryIndxs], railTransporationDistance[countryIndxs], \
                                                               coverMap[countryIndxs],concentrateCapacityFunc,concentrateDiscountedTotalMassFunc)
           #print "Saving: ", filename
-          SaveMap(filename, dd)
+          SaveMap(filename, dd,False)
 
 
         if doTimer:
@@ -480,7 +485,7 @@ class RegionalCalculationManager():
             filename = theProblemManager.outputPrefix+".npy"
             
           #print "Saving: ", filename
-          SaveMap(filename, mineValueMap)
+          SaveMap(filename, mineValueMap,theProblemManager.recordRange)
         
         return 
     
@@ -718,7 +723,7 @@ class RegionalCalculationManager():
           pl.show()    
         else:
           filename = theProblemManager.outputPrefix+"."+theProblemManager.outputType
-          SaveMap(filename, revenueCostRatioMap)
+          SaveMap(filename, revenueCostRatioMap,theProblemManager.recordRange)
 
         ######################################################################
 
@@ -1061,7 +1066,7 @@ class RegionalCalculationManager():
           pl.show()    
         else:
           filename = theProblemManager.outputPrefix+"."+theProblemManager.outputType
-          SaveMap(filename, breakEvenFactor)
+          SaveMap(filename, breakEvenFactor,theProblemManager.recordRange)
 
         ######################################################################
 

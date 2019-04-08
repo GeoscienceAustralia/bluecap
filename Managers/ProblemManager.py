@@ -22,7 +22,7 @@ Please refer to individual components for more details.
 # IO
 from IO.XML import NewXMLTree,GetXMLTreeRoot,SaveXMLFile,LoadXMLFile
 from IO.XML import HasChild,GetChild,GetChildren,AddChild
-from IO.XML import GetAttributeString,GetAttributeFileString,GetAttributeStringOrDefault,SetAttributeString
+from IO.XML import GetAttributeString,GetAttributeFileString,GetAttributeStringOrDefault,GetAttributeValueOrDefault,SetAttributeString
 from IO.XML import PrettyXMLFormat
 
 # Managers
@@ -47,8 +47,10 @@ class ProblemManager():
       self.theMineDataManager = MineDataManager()
       self.theRegionalCalculationManager = RegionalCalculationManager()
       
+      
       self.outputPrefix = "output"
       self.outputType = ""
+      self.recordRange = False
       
     @classmethod
     def FromXMLFile(cls,filename):
@@ -113,6 +115,8 @@ class ProblemManager():
         outputNode = GetChild(rootNode,"Output")
         self.outputPrefix = GetAttributeFileString(outputNode,"prefix")
         self.outputType = GetAttributeStringOrDefault(outputNode,"type","")
+        
+        self.recordRange = GetAttributeValueOrDefault(outputNode,"recordRange",False)
         
       # Regional calculation - optional
       if(HasChild(rootNode,"RegionalCalculation")):

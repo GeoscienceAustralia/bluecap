@@ -22,10 +22,20 @@ Please refer to individual components for more details.
 import numpy as np
 
 
+
+# Common
+from Common.Common import BluecapError
+
+# IO
 from IO.XML import HasChild,GetChild,AddChild,GetChildren
+from IO.XML import HasAttribute
 from IO.XML import GetAttributeString,GetAttributeValue, SetAttributeString,GetXMLTag
 
+
+# Units
 from Units.UnitManager import UnitManager
+
+
 
 # Managers
 
@@ -52,20 +62,26 @@ class OreBodyDataManager():
       """
       Generate Ore body data from xml tree node. 
       """
-      
       self.type = GetAttributeString(orebodyDataNode,"type")
       #self.grade = GetAttributeValue(orebodyDataNode,"grade")
       self.dip = GetAttributeValue(orebodyDataNode,"dip")
       
       self.cover = GetAttributeValue(orebodyDataNode,"cover")
       
-      self.length =GetAttributeValue(orebodyDataNode,"length")
-      self.width = GetAttributeValue(orebodyDataNode,"width")
-      self.height = GetAttributeValue(orebodyDataNode,"height")
-      if( self.width > self.length):
-        temp = self.width 
-        self.width = self.length
-        self.length = temp
+      if( HasAttribute(orebodyDataNode,"length") ):
+        self.length =GetAttributeValue(orebodyDataNode,"length")
+        self.width = GetAttributeValue(orebodyDataNode,"width")
+        self.height = GetAttributeValue(orebodyDataNode,"height")
+        if( self.width > self.length):
+          temp = self.width 
+          self.width = self.length
+          self.length = temp
+      elif( HasAttribute(orebodyDataNode,"mass")  ):
+        self.orebodyMass = GetAttributeValue(orebodyDataNode,"mass")
+        self.CalculateDepositVolume()
+        self.CalculateDepositDimensionsFromVolume()
+      else:
+        BluecapError("Failed to find orebody mass or dimensions in input.")
       
       for child in GetChildren(orebodyDataNode):
           type = GetXMLTag(child)
@@ -109,6 +125,21 @@ class OreBodyDataManager():
       # print "orebody mass in kg", self.orebodyMass # in kg
       return self.orebodyMass
      
+    def CalculateDepositVolume(self):
+      """
+      Calculate volume of ore given the mass
+      """
+      theUnitManager = UnitManager()
+      waterDensity = theUnitManager.ConvertToBaseUnits("1000 kg/m^3") # water density in base units
+      self.orebodyVolume = self.orebodyMass/(self.specificDensity * waterDensity)
+      
+    def CalculateDepositDimensionsFromVolume(self):
+      """
+      Calculate dimensions assuming a "cubic" deposit (NB may be slanted)
+      """
+      self.length = (self.orebodyVolume/self.shapeFactor)**(1.0/3.0)
+      self.width = self.length
+      self.height = self.length
      
     def ScaleCommodityGrades(self, factor):
       """

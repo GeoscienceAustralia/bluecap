@@ -134,8 +134,8 @@ class ProblemManager():
       Write problem to xml node
       """
       
-      theVersion = "0.0"
-      SetAttributeString(root,"version",theVersion)
+      theGitSha = GetGitSha()
+      SetAttributeString(root,"sha",theGitSha)
       
       #functions
       theFunctionManager = FunctionManager()  

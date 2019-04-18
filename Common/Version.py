@@ -23,8 +23,11 @@ import subprocess
 import os
 
 def GetGitSha():
-   cmd = "git rev-parse --short HEAD"
+   fileDir = os.path.dirname(os.path.abspath(__file__))
+   cmd = "cd " +fileDir + "; git rev-parse --short HEAD"
+   print cmd
    returned_value = subprocess.check_output(cmd,shell="True")
+   returned_value = returned_value.strip(' \n\t')
    
    return returned_value
  

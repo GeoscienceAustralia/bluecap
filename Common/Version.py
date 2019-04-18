@@ -24,11 +24,14 @@ import os
 
 def GetGitSha():
    fileDir = os.path.dirname(os.path.abspath(__file__))
-   cmd = "cd " +fileDir + "; git rev-parse --short HEAD"
-   print cmd
-   returned_value = subprocess.check_output(cmd,shell="True")
-   returned_value = returned_value.strip(' \n\t')
    
+   if(os.path.exists(fileDir+"/../../.git")):
+     cmd = "cd " +fileDir + "; git rev-parse --short HEAD"
+     #print cmd
+     returned_value = subprocess.check_output(cmd,shell="True")
+     returned_value = returned_value.strip(' \n\t')
+   else:
+     returned_value = "unknown"
    return returned_value
  
 

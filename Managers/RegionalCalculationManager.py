@@ -62,6 +62,8 @@ class RegionalCalculationManager():
       self.stride = 1
 
       self.stateIdsMapFile = ""
+      
+      self.doEmploymentCalculation = False
 
     def ParseXMLNode(self, regionalDataNode):
       """
@@ -89,6 +91,9 @@ class RegionalCalculationManager():
   
       if(HasAttribute(regionalDataNode,"stride")):
         self.stride = GetAttributeValue(regionalDataNode,"stride")
+        
+      if(HasAttribute(regionalDataNode,"estimateEmployment")):
+        self.doEmploymentCalculation = GetAttributeValue(regionalDataNode,"estimateEmployment")
         
     def WriteXMLNode(self, node):
       """
@@ -201,7 +206,7 @@ class RegionalCalculationManager():
         doTimer = False
         timesList = []
         
-        doEmploymentCalculation = True
+        # self.doEmploymentCalculation = True
 
         if doTimer:
           #startTime = time.time()
@@ -247,7 +252,7 @@ class RegionalCalculationManager():
           mineLife = theProblemManager.theMineDataManager.theMiningSystem.mineLife
           mineYears.append(mineLife)
           
-          if(doEmploymentCalculation):
+          if(self.doEmploymentCalculation):
             mineAndProcCapex = theProblemManager.theMineDataManager.theEconomicDataManager.netCapex[0]
             mineCapExs.append(mineAndProcCapex)
   
@@ -300,7 +305,7 @@ class RegionalCalculationManager():
         concentrateDiscountedTotalMassFunc = interpolate.interp1d(coverDepths,concentrateDiscountedTotalMasses)
         concentrateCapacityFunc = interpolate.interp1d(coverDepths,concentrateCapacities)
         
-        if(doEmploymentCalculation):
+        if(self.doEmploymentCalculation):
           minecapexFunc = interpolate.interp1d(coverDepths,mineCapExs)
 
 
@@ -482,7 +487,7 @@ class RegionalCalculationManager():
         mineValueMap[stateIdsMap< 0.0] = np.nan  
 
 
-        if(doEmploymentCalculation):
+        if(self.doEmploymentCalculation):
           minecapexFunc = interpolate.interp1d(coverDepths,mineCapExs)
           
           initialCapex = np.zeros(coverMap.shape)

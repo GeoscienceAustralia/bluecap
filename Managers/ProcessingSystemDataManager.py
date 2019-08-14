@@ -43,9 +43,10 @@ class ProcessingSystemDataManager():
       """
       Create an empty processing system data manager and default variables. 
       """
-      self.processingMethod = "Au"  # FL
+      self.processingMethod = "Au"  
       self.processingLoss = 0.10
       self.refiningTake = 0.10
+      self.processingPower = []
       
 
     def ParseXMLNode(self, processingSystemNode):
@@ -104,7 +105,8 @@ class ProcessingSystemDataManager():
       Calculate processing capacity, amount of ore processed each year and amount of concentrate produced
       """
       
-      self.oreProcessed = np.zeros(len(mineDataManager.theMiningSystem.oreMined))  
+      self.oreProcessed = np.zeros(len(mineDataManager.theMiningSystem.oreMined)) 
+      self.processingPower = np.zeros(len(mineDataManager.theMiningSystem.oreMined))   
       self.processingCapacity = mineDataManager.theMiningSystem.mineOreProductionCapacity # ore is processed at a constant rate
       carryOver = 0.0
       for year in range( len(mineDataManager.theMiningSystem.oreMined )-1 ):
@@ -119,6 +121,11 @@ class ProcessingSystemDataManager():
       
       self.oreProcessed[-1] = carryOver +  mineDataManager.theMiningSystem.oreMined[-1] # final year
       
+      
+      # fixme - need to make this an input function
+      # convert tonnes processed each year to the number of Mwh based on powerlaw fit
+      self.processingPower = 3.96*(self.oreProcessed  )**0.703  # in Mwh
+      
       referenceMetalStr = mineDataManager.theOreBody.type[:2]  
       # first two letters of orebody type is assumed to be reference metal for determining processing grade
       # eg AuCu -> gold is reference metal - note that user must select correct method
@@ -130,7 +137,7 @@ class ProcessingSystemDataManager():
       
       # lookup concentrateMetalConcentrations based on reference metal type
       
-      concentrateConcentrations = {"Au":0.05,"Ag":0.05,"Ni":0.1,"Cu":0.25,"Pb":0.5}
+      concentrateConcentrations = {"Au":0.75,"Ag":0.85,"Ni":0.1,"Cu":0.25,"Pb":0.5}
       
       # find the minimum amount of concentration needed to bring concentrate to market
       minConcentrationFactor = 1e64

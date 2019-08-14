@@ -27,7 +27,7 @@ from Common.Common import Todo,Fixme
 
 # IO
 from IO.XML import HasChild,GetChild,AddChild
-from IO.XML import GetAttributeString,GetAttributeValue, SetAttributeString
+from IO.XML import GetAttributeString,GetAttributeValue,GetAttributeValueOrDefault, SetAttributeString, GetAttributeStringOrDefault
 
 # Units
 from Units.UnitManager import UnitManager
@@ -48,6 +48,7 @@ class InfrastructureDataManager():
       self.distanceToRail = 0.0
       self.distanceToPower = 0.0
       self.distanceToWater = 0.0
+      self.distanceToGas = 0.0
       
       self.roadTransportationDistance = 0.0
       self.railTransportationDistance = 0.0
@@ -65,11 +66,18 @@ class InfrastructureDataManager():
       self.infrastructureCapex = np.array([0.0])
       self.infrastructureOpex = np.array([0.0])
       
+      #self.powerSupply = "grid"
+      self.calculateGas = False
+      self.calculateDiesel = False
+      
 
     def ParseXMLNode(self, infrastructureNode):
       """
       Generate processing system data from xml tree node. 
       """
+      #self.powerSupply = GetAttributeStringOrDefault(infrastructureNode,"powerSupply", self.powerSupply)
+      self.calculateDiesel = GetAttributeStringOrDefault(infrastructureNode,"calculateDiesel", self.calculateDiesel)
+      self.calculateGas = GetAttributeValueOrDefault(infrastructureNode,"calculateGas", self.calculateGas)
       
       return infrastructureNode
         
@@ -83,6 +91,12 @@ class InfrastructureDataManager():
       SetAttributeString(node,"railDist",self.distanceToRail)
       SetAttributeString(node,"powerDist",self.distanceToPower)
       SetAttributeString(node,"waterDist",self.distanceToWater)
+      
+      if(self.calculateDiesel):
+        SetAttributeString(node,"calculateDiesel",self.calculateDiesel)
+      if(self.calculateGas):
+        SetAttributeString(node,"calculateGas",self.calculateGas)
+        SetAttributeString(node,"gasDist",self.distanceToGas)
       
       return node
       
@@ -102,6 +116,9 @@ class InfrastructureDataManager():
       self.roadTransportationDistance = theFunctionManager.GetFunction("RoadTransportationDistance").f( mineDataManager.mineLatLong  )  *oneKm
       self.railTransportationDistance = theFunctionManager.GetFunction("RailTransportationDistance").f( mineDataManager.mineLatLong  )  *oneKm 
     
+      if(self.calculateGas): 
+        self.distanceToGas = theFunctionManager.GetFunction("DistanceToGas").f( mineDataManager.mineLatLong  ) *oneKm
+    
     def ZeroDistanceToInfrastructure(self):
       """
       Set distance to infrastructure to 0. 
@@ -111,6 +128,7 @@ class InfrastructureDataManager():
       self.distanceToRail = 0.0
       self.distanceToWater = 0.0
       self.distanceToPower = 0.0
+      self.distanceToGas = 0.0
       
       self.roadTransportationDistance = 0.0
       self.railTransportationDistance = 0.0
@@ -317,9 +335,36 @@ class InfrastructureDataManager():
       self.powerOpex = np.zeros(numYears)
       
       #Power opex is ignored as included in mine and processing opex
+      
+      
+      """
+      if(self.calculateDiesel):
+        self.powerCapex[:] =0
+        AUD2016 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2016,2018)
+        dieselLCOE = 350*AUD2016   # Renewable energy in Australian mining sector estimate
+        retailCOE = 100*AUD2018
+        self.powerOpex = mineDataManager.theProcessingSystem.processingPower*( dieselLCOE - retailCOE)
+        
+      if(self.calculateGas):
+        self.powerCapex[:] =0
+        AUD2016 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2016,2018)
+        AUD2018 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2018,2018)  # = 1
+        gasLCOE = 120*AUD2016  # Renewable energy in Australian mining sector estimate
+        retailCOE = 100*AUD2018
+        self.powerOpex = mineDataManager.theProcessingSystem.processingPower*( gasLCOE - retailCOE)
+        theFunctionManager = FunctionManager()
+        
+        piplelineCostPerKM = 0.315e6*AUD2014  # from core gas production and transmission costs 8 inch class 600 5.6mm wall.
+      
+        self.powerOpex += piplelineCostPerKM*self.distanceToGas
+       """
+      
+        
+        
+
 
  
-    def CalculateRegionalPowerExpenses(self, distanceToPower):
+    def CalculateRegionalPowerExpenses(self, problemManager, distanceToPower):
       # distanceToPower is assumed given in km
             
       theUnitManager = UnitManager()
@@ -327,11 +372,11 @@ class InfrastructureDataManager():
       
       AUD2010 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2010,2018) * theUnitManager.ConvertToBaseUnits("AUD")  #in today's dollars
       AUD2014 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2014,2018) * theUnitManager.ConvertToBaseUnits("AUD") 
-      
+      AUD2016 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2016,2018) * theUnitManager.ConvertToBaseUnits("AUD") 
+     
       
       
       powerCosts[distanceToPower > 190] =  925000*AUD2014
-      
       
       powerCosts[ np.logical_and(distanceToPower <= 190,distanceToPower > 150)  ] = 300000*AUD2014
       
@@ -341,8 +386,59 @@ class InfrastructureDataManager():
       
       powerCosts *= distanceToPower
       
+            
+      if(self.calculateDiesel):
+        AUD2018 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2018,2018) * theUnitManager.ConvertToBaseUnits("AUD") 
+        dieselLCOE = 350*AUD2016   # Renewable energy in Australian mining sector estimate
+        retailCOE = 100*AUD2018
+        dieselCosts = problemManager.theMineDataManager.theProcessingSystem.processingPower*( dieselLCOE - retailCOE)
+        dieselNPC = problemManager.theMineDataManager.theEconomicDataManager.CalculateNPV(dieselCosts)
+        powerCosts[ powerCosts > dieselNPC ] = dieselNPC
+    
+      """
+      if(self.calculateGas):
+        AUD2018 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2018,2018) * theUnitManager.ConvertToBaseUnits("AUD") 
+        gasLCOE = 120*AUD2016  # Renewable energy in Australian mining sector estimate
+        retailCOE = 100*AUD2018
+        gasCosts = problemManager.theMineDataManager.theProcessingSystem.processingPower*( dieselLCOE - retailCOE)
+        gasNPC = mineDataManager.theEconomicDataManager.CalculateNPV(gasCosts)
+        powerCosts[ powerCosts > gasNPC ] = gasNPC
+      """
+        
+      
       return powerCosts
       
+      
       #Power opex is ignored as included in mine and processing opex
+      
+      
+       
+    def CalculateRegionalGasExpenses(self,problemManager, distanceToGas):
+      # distanceToGas is assumed given in km
+            
+      theUnitManager = UnitManager()
+      gasCosts = np.zeros(distanceToGas.shape)
+      
+      #AUD2010 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2010,2018) * theUnitManager.ConvertToBaseUnits("AUD")  #in today's dollars
+      AUD2016 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2016,2018) * theUnitManager.ConvertToBaseUnits("AUD") 
+      AUD2014 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2014,2018) * theUnitManager.ConvertToBaseUnits("AUD") 
+      
+      
+      #powerCosts[distanceToPower > 190] =  925000*AUD2014
+      
+      piplelineCostPerKM = 0.315e6*AUD2014  # from core gas production and transmission costs 8 inch class 600 5.6mm wall.
+      
+      gasCosts = piplelineCostPerKM*distanceToGas
+      
+      AUD2018 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2018,2018) * theUnitManager.ConvertToBaseUnits("AUD") 
+      gasLCOE = 120*AUD2016   # LCOE per Mwh
+      retailCOE = 100*AUD2018 # LCOE per Mwh
+      
+      gasPowerCosts = problemManager.theMineDataManager.theProcessingSystem.processingPower*( gasLCOE - retailCOE)
+      gasNPC = problemManager.theMineDataManager.theEconomicDataManager.CalculateNPV(gasPowerCosts)
+      gasCosts+= gasNPC
+        
+      
+      return gasCosts
      
                 

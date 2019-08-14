@@ -29,7 +29,8 @@ import time
 from Common.Common import Todo,Fixme
 
 from IO.XML import HasChild,GetChild,AddChild,GetChildren
-from IO.XML import HasAttribute,GetAttributeString,GetAttributeFileString,GetAttributeValue,GetAttributeVector, SetAttributeString,GetXMLTag
+from IO.XML import HasAttribute,GetAttributeString,GetAttributeFileString,GetAttributeFileStringOrDefault
+from IO.XML import GetAttributeValue,GetAttributeVector, SetAttributeString,GetXMLTag
 
 # Managers
 
@@ -38,30 +39,6 @@ from Units.UnitManager import UnitManager
 from IO.CommandLine import ParseCommandLineArgs
 
 
-# helper functions
-def LoadMap(filename):
-  if filename[-3:] == "npy":
-    rv = np.load(filename)
-  else:
-    rv = np.loadtxt(filename)
-  return rv
-
-
-def SaveMap(filename, data, reportRange):
-
-  if(reportRange):
-    np.savetxt(filename+"_range.txt",[np.nanmin(data), np.nanmax(data)])
-    
-  if(filename[-3:] in ["jpg","tif","png"]  or  filename[-4:] == "tiff"):
-	pl.imsave(filename,data,origin="lower")
-  elif( filename[-3:] == "npy"):
-	np.save(filename,data)
-  elif( filename[-3:] == "txt"):
-	np.savetxt(filename,data)
-  else:
-	print "Error unrecognized output type: ", filename
-	
-  return 0  
 
 class RegionalCalculationManager():
     def __init__(self):
@@ -73,6 +50,7 @@ class RegionalCalculationManager():
       self.coverDepthMapFile = ""
       self.waterDistanceMapFile = ""
       self.powerDistanceMapFile = ""
+      self.gasDistanceMapFile = ""
       self.railDistanceMapFile = ""
       self.roadDistanceMapFile = ""
       self.railDistanceToPortMapFile = ""
@@ -80,6 +58,8 @@ class RegionalCalculationManager():
       
       self.dataBoundingBox = []
       self.outputBoundingBox = []
+      
+      self.stride = 1
 
       self.stateIdsMapFile = ""
 
@@ -90,13 +70,15 @@ class RegionalCalculationManager():
       
       self.type = GetAttributeString(regionalDataNode,"type")
           
-      self.coverDepthMapFile = GetAttributeFileString(regionalDataNode,"coverDepth") #"../Infrastructure/depthOfCover_dtb_final_mga54_3_fill_wgs_1984.npy"
-      self.waterDistanceMapFile = GetAttributeFileString(regionalDataNode,"waterDistance") # = "../Infrastructure/distanceToWater_dtb_final_mga54_3_fill_wgs_1984.npy"
+      self.coverDepthMapFile = GetAttributeFileString(regionalDataNode,"coverDepth")
+      self.waterDistanceMapFile = GetAttributeFileString(regionalDataNode,"waterDistance") 
       self.powerDistanceMapFile = GetAttributeFileString(regionalDataNode,"powerDistance")
       self.railDistanceMapFile = GetAttributeFileString(regionalDataNode,"railDistance")
       self.roadDistanceMapFile = GetAttributeFileString(regionalDataNode,"roadDistance")
       self.railDistanceToPortMapFile = GetAttributeFileString(regionalDataNode,"railTransportationDistance")
       self.roadDistanceToPortMapFile = GetAttributeFileString(regionalDataNode,"roadTransportationDistance")
+      
+      self.gasDistanceMapFile = GetAttributeFileStringOrDefault(regionalDataNode,"gasDistance",self.gasDistanceMapFile)  # optional
 
       self.stateIdsMapFile = GetAttributeFileString(regionalDataNode,"states")
       
@@ -105,6 +87,8 @@ class RegionalCalculationManager():
       if(HasAttribute(regionalDataNode,"outputBoundingBox")):
         self.outputBoundingBox = GetAttributeVector(regionalDataNode,"outputBoundingBox")
   
+      if(HasAttribute(regionalDataNode,"stride")):
+        self.stride = GetAttributeValue(regionalDataNode,"stride")
         
     def WriteXMLNode(self, node):
       """
@@ -113,6 +97,34 @@ class RegionalCalculationManager():
       SetAttributeString(node,"type",self.type)
       
       return node
+    
+    
+    def LoadMap(self,filename):
+      if filename[-3:] == "npy":
+        rv = np.load(filename)
+      else:
+        rv = np.loadtxt(filename)
+
+      if(self.stride > 1):
+        rv = rv[::self.stride,::self.stride]
+      return rv
+    
+    
+    def SaveMap(self,filename, data, reportRange):
+
+	  if(reportRange):
+		np.savetxt(filename+"_range.txt",[np.nanmin(data), np.nanmax(data)])
+	
+	  if(filename[-3:] in ["jpg","tif","png"]  or  filename[-4:] == "tiff"):
+		pl.imsave(filename,data,origin="lower")
+	  elif( filename[-3:] == "npy"):
+		np.save(filename,data)
+	  elif( filename[-3:] == "txt"):
+		np.savetxt(filename,data)
+	  else:
+		print "Error unrecognized output type: ", filename
+	
+	  return 0  
       
     def Run(self,problemManager):
       """
@@ -125,6 +137,8 @@ class RegionalCalculationManager():
         self.RunBenefitCostRatioCalculation(problemManager)
       elif(self.type == "breakeven_grade"):
         self.RunBreakevenGradeCalculation(problemManager)
+      elif(self.type == "employment"):
+        self.RunEmploymentCalculation(problemManager)
       else:
         print "Error: Unrecognized regional calculation: " +  self.type
         exit()
@@ -186,6 +200,8 @@ class RegionalCalculationManager():
         # profiling
         doTimer = False
         timesList = []
+        
+        doEmploymentCalculation = False
 
         if doTimer:
           #startTime = time.time()
@@ -210,6 +226,8 @@ class RegionalCalculationManager():
         mineYears = []
         concentrateDiscountedTotalMasses = []
         concentrateCapacities = []
+        
+        mineCapExs = []  # for employment calculation
 
 
         stateStrs = ["NSW","NT","QLD","SA","WA","VIC","ACT","TAS"]
@@ -228,6 +246,10 @@ class RegionalCalculationManager():
   
           mineLife = theProblemManager.theMineDataManager.theMiningSystem.mineLife
           mineYears.append(mineLife)
+          
+          if(doEmploymentCalculation):
+            mineAndProcCapex = theProblemManager.theMineDataManager.theEconomicDataManager.netCapex[0]
+            mineCapExs.append(mineAndProcCapex)
   
           mineTypeStr = theProblemManager.theMineDataManager.theMiningSystem.miningMethod  # 1 if UG, 0.5 mixed, 0 OC 
   
@@ -262,8 +284,7 @@ class RegionalCalculationManager():
         if doTimer:
           #coverFuncTime = time.time()
           timesList.append(["coverFunc", time.time()])
-
-
+          
 
 
         mineValues = np.array(mineValues,dtype=np.float)
@@ -278,6 +299,9 @@ class RegionalCalculationManager():
         mineLifeFunc = interpolate.interp1d(coverDepths,mineYears)
         concentrateDiscountedTotalMassFunc = interpolate.interp1d(coverDepths,concentrateDiscountedTotalMasses)
         concentrateCapacityFunc = interpolate.interp1d(coverDepths,concentrateCapacities)
+        
+        if(doEmploymentCalculation):
+          minecapexFunc = interpolate.interp1d(coverDepths,mineCapExs)
 
 
 
@@ -300,6 +324,7 @@ class RegionalCalculationManager():
         coverDepthMapFile = self.coverDepthMapFile
         waterDistanceMapFile = self.waterDistanceMapFile
         powerDistanceMapFile = self.powerDistanceMapFile
+        gasDistanceMapFile = self.gasDistanceMapFile
         railDistanceMapFile = self.railDistanceMapFile
         roadDistanceMapFile = self.roadDistanceMapFile
         railDistanceToPortMapFile = self.railDistanceToPortMapFile
@@ -311,7 +336,7 @@ class RegionalCalculationManager():
           #startMapsTime = time.time()
           timesList.append(["startMaps", time.time()])
 
-        stateIdsMap =  LoadMap(stateIdsMapFile)
+        stateIdsMap =  self.LoadMap(stateIdsMapFile)
         self.ApplyOutputBoundingBoxMask(stateIdsMap) 
         
 
@@ -319,7 +344,7 @@ class RegionalCalculationManager():
         ###################################
         
         if(coverDepthMapFile):
-          coverMap =  LoadMap(coverDepthMapFile)
+          coverMap =  self.LoadMap(coverDepthMapFile)
           
           # for MD basin only - remove
           #cc = coverMap==0
@@ -332,9 +357,9 @@ class RegionalCalculationManager():
           coverMap[coverMap < coverMin] = coverMin
   
         else:
-          # nonsense values
-          coverMap =  LoadMap(waterDistanceMapFile) # fixme
-          XX,YY = np.mgrid[0:1:coverMap.shape[0]*1j,0:1:coverMap.shape[1]*1j]    #random.rand(coverMap.shape[0],coverMap.shape[1]) # fixme
+          # nonsense values for testing
+          coverMap =  self.LoadMap(waterDistanceMapFile) # fixme
+          XX,YY = np.mgrid[0:1:coverMap.shape[0]*1j,0:1:coverMap.shape[1]*1j]   
           coverMap[:] = 25 # + 1.*XX - 2*YY
 
           coverMap = 25  + 1.*XX - 2*YY
@@ -353,10 +378,12 @@ class RegionalCalculationManager():
           mineValueMap[stateIndxs] = mineValueFunc(coverMap[stateIndxs])
 
         
+        
+        
         if(doAll):
           filename = theProblemManager.outputPrefix+"_mineValue.npy"  
           #print "Saving: ", filename
-          SaveMap(filename, mineValueMap,False)
+          self.SaveMap(filename, mineValueMap,False)
           
           filename = theProblemManager.outputPrefix+"_mineValueNT.npy"  
           NTValueFunc = interpolate.interp1d(coverDepths,stateMineValues["NT"])
@@ -364,22 +391,24 @@ class RegionalCalculationManager():
           dd = np.zeros(coverMap.shape)
           dd[countryIndxs] = NTValueFunc(coverMap[countryIndxs])
           #print "Saving: ", filename
-          SaveMap(filename, dd,False)
+          self.SaveMap(filename, dd,False)
 
         if doTimer:
           #mineValueFuncTime = time.time()
           timesList.append(["mineValue", time.time()])
 
         # Water Expenses
-        distanceToWater =  LoadMap(waterDistanceMapFile)
+        distanceToWater =  self.LoadMap(waterDistanceMapFile)
         mineValueMap[countryIndxs] -=  taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalWaterExpenses(theProblemManager,distanceToWater[countryIndxs])
+        
+
 
         if(doAll):
           filename = theProblemManager.outputPrefix+"_waterCost.npy"  
           dd = np.zeros(coverMap.shape)
           dd[countryIndxs] = taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalWaterExpenses(theProblemManager,distanceToWater[countryIndxs])
           #print "Saving: ", filename
-          SaveMap(filename, dd,False)
+          self.SaveMap(filename, dd,False)
 
         if doTimer:
           #waterTime = time.time()
@@ -387,25 +416,45 @@ class RegionalCalculationManager():
 
         # Power Expenses
         #Todo("Pre-calculate power supply costs")
-        distanceToPower =  LoadMap(powerDistanceMapFile)
-        mineValueMap[countryIndxs] -=  taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalPowerExpenses(distanceToPower[countryIndxs])
+        distanceToPower =  self.LoadMap(powerDistanceMapFile)
+        
+        if(theProblemManager.theMineDataManager.theInfrastructureManager.calculateGas):
+          powerCost = theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalPowerExpenses(theProblemManager,distanceToPower[countryIndxs])
+          
+          distanceToGas =  self.LoadMap(gasDistanceMapFile)
+          gasCost =  theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalGasExpenses(theProblemManager,distanceToGas[countryIndxs])
+
+          mineValueMap[countryIndxs] -=  taxRelief*  np.minimum(powerCost,gasCost)
+        else:
+          mineValueMap[countryIndxs] -=  taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalPowerExpenses(theProblemManager,distanceToPower[countryIndxs])
+
+
+
+
 
         if(doAll):
           filename = theProblemManager.outputPrefix+"_powerCost.npy"  
           dd = np.zeros(coverMap.shape)
-          dd[countryIndxs] = taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalPowerExpenses(distanceToPower[countryIndxs])
+          dd[countryIndxs] = taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalPowerExpenses(theProblemManager,distanceToPower[countryIndxs])
           #print "Saving: ", filename
-          SaveMap(filename, dd,False)
+          self.SaveMap(filename, dd,False)
+          
+          if(theProblemManager.theMineDataManager.theInfrastructureManager.calculateGas):
+			  filename = theProblemManager.outputPrefix+"_gasCost.npy"  
+			  dd = np.zeros(coverMap.shape)
+			  dd[countryIndxs] = taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalGasExpenses(theProblemManager,distanceToGas[countryIndxs])
+			  #print "Saving: ", filename
+			  self.SaveMap(filename, dd,False)
 
         if doTimer:
           #powerTime = time.time()
           timesList.append(["power", time.time()])
 
         # Transportation Expenses
-        distanceToRoad =  LoadMap(roadDistanceMapFile)
-        distanceToRail =  LoadMap(railDistanceMapFile)
-        roadTransportationDistance =  LoadMap(roadDistanceToPortMapFile)
-        railTransporationDistance =  LoadMap(railDistanceToPortMapFile)
+        distanceToRoad =  self.LoadMap(roadDistanceMapFile)
+        distanceToRail =  self.LoadMap(railDistanceMapFile)
+        roadTransportationDistance =  self.LoadMap(roadDistanceToPortMapFile)
+        railTransporationDistance =  self.LoadMap(railDistanceToPortMapFile)
 
 
         mineValueMap[countryIndxs] -= taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalTransportationExpenses( \
@@ -421,7 +470,7 @@ class RegionalCalculationManager():
                                                               distanceToRail[countryIndxs], railTransporationDistance[countryIndxs], \
                                                               coverMap[countryIndxs],concentrateCapacityFunc,concentrateDiscountedTotalMassFunc)
           #print "Saving: ", filename
-          SaveMap(filename, dd,False)
+          self.SaveMap(filename, dd,False)
 
 
         if doTimer:
@@ -431,10 +480,32 @@ class RegionalCalculationManager():
 
 
         mineValueMap[stateIdsMap< 0.0] = np.nan  
+
+
+        if(doEmploymentCalculation):
+          minecapexFunc = interpolate.interp1d(coverDepths,mineCapExs)
+          
+          initialCapex = np.zeros(coverMap.shape)
+          positiveNPVindxs = mineValueMap>0
+          initialCapex[positiveNPVindxs] = minecapexFunc(coverMap[positiveNPVindxs])
+          
+          employmentEstimate = np.zeros(coverMap.shape)
+          employmentEstimate = theProblemManager.theMineDataManager.theEconomicDataManager.EstimateDirectEmployment(initialCapex)
+          
+          # clip to bounding box
+          if(len(self.dataBoundingBox) == 4 and len(self.outputBoundingBox) == 4):
+            employmentEstimate = self.ClipToOutputBounds(employmentEstimate)
+            
+          filename = theProblemManager.outputPrefix+"_employment.npy"  
+          
+          #print "Saving: ", filename
+          self.SaveMap(filename, employmentEstimate,False)
+
         
         # clip to bounding box
         if(len(self.dataBoundingBox) == 4 and len(self.outputBoundingBox) == 4):
           mineValueMap = self.ClipToOutputBounds(mineValueMap)
+
 
 
         if doTimer:
@@ -485,7 +556,7 @@ class RegionalCalculationManager():
             filename = theProblemManager.outputPrefix+".npy"
             
           #print "Saving: ", filename
-          SaveMap(filename, mineValueMap,theProblemManager.recordRange)
+          self.SaveMap(filename, mineValueMap,theProblemManager.recordRange)
         
         return 
     
@@ -626,21 +697,21 @@ class RegionalCalculationManager():
           #startMapsTime = time.time()
           timesList.append(["startMaps", time.time()])
 
-        stateIdsMap =  LoadMap(stateIdsMapFile)
+        stateIdsMap =  self.LoadMap(stateIdsMapFile)
         self.ApplyOutputBoundingBoxMask(stateIdsMap) 
 
         countryIndxs = stateIdsMap >= 0.0
 
         ###################################
         if(coverDepthMapFile):
-          coverMap =  LoadMap(coverDepthMapFile)
+          coverMap =  self.LoadMap(coverDepthMapFile)
           # bound cover map
           coverMap[coverMap > coverMax] = coverMax
           coverMap[coverMap < coverMin] = coverMin
   
         else:
           # nonsense values
-          coverMap =  LoadMap(waterDistanceMapFile) # fixme
+          coverMap =  self.LoadMap(waterDistanceMapFile) # fixme
           XX,YY = np.mgrid[0:1:coverMap.shape[0]*1j,0:1:coverMap.shape[1]*1j]    #random.rand(coverMap.shape[0],coverMap.shape[1]) # fixme
           coverMap[:] = 25 # + 1.*XX - 2*YY
 
@@ -660,7 +731,7 @@ class RegionalCalculationManager():
           timesList.append(["mineValue", time.time()])
 
         # Water Expenses
-        distanceToWater =  LoadMap(waterDistanceMapFile)
+        distanceToWater =  self.LoadMap(waterDistanceMapFile)
         mineCostMap[countryIndxs] +=  theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalWaterExpenses(theProblemManager,distanceToWater[countryIndxs])
 
         if doTimer:
@@ -669,8 +740,8 @@ class RegionalCalculationManager():
 
         # Power Expenses
         #Todo("Pre-calculate power supply costs")
-        distanceToPower =  LoadMap(powerDistanceMapFile)
-        mineCostMap[countryIndxs] +=  theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalPowerExpenses(distanceToPower[countryIndxs])
+        distanceToPower =  self.LoadMap(powerDistanceMapFile)
+        mineCostMap[countryIndxs] +=  theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalPowerExpenses(theProblemManager,distanceToPower[countryIndxs])
 
 
         if doTimer:
@@ -678,10 +749,10 @@ class RegionalCalculationManager():
           timesList.append(["power", time.time()])
 
         # Transportation Expenses
-        distanceToRoad =  LoadMap(roadDistanceMapFile)
-        distanceToRail =  LoadMap(railDistanceMapFile)
-        roadTransportationDistance =  LoadMap(roadDistanceToPortMapFile)
-        railTransporationDistance =  LoadMap(railDistanceToPortMapFile)
+        distanceToRoad =  self.LoadMap(roadDistanceMapFile)
+        distanceToRail =  self.LoadMap(railDistanceMapFile)
+        roadTransportationDistance =  self.LoadMap(roadDistanceToPortMapFile)
+        railTransporationDistance =  self.LoadMap(railDistanceToPortMapFile)
 
 
         mineCostMap[countryIndxs] += theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalTransportationExpenses( \
@@ -723,7 +794,7 @@ class RegionalCalculationManager():
           pl.show()    
         else:
           filename = theProblemManager.outputPrefix+"."+theProblemManager.outputType
-          SaveMap(filename, revenueCostRatioMap,theProblemManager.recordRange)
+          self.SaveMap(filename, revenueCostRatioMap,theProblemManager.recordRange)
 
         ######################################################################
 
@@ -930,21 +1001,21 @@ class RegionalCalculationManager():
           #startMapsTime = time.time()
           timesList.append(["startMaps", time.time()])
 
-        stateIdsMap =  LoadMap(stateIdsMapFile)
+        stateIdsMap =  self.LoadMap(stateIdsMapFile)
         self.ApplyOutputBoundingBoxMask(stateIdsMap) 
 
         countryIndxs = stateIdsMap >= 0.0
 
         ###################################
         if(coverDepthMapFile):
-          coverMap =  LoadMap(coverDepthMapFile)
+          coverMap =  self.LoadMap(coverDepthMapFile)
           # bound cover map
           coverMap[coverMap > coverMax] = coverMax
           coverMap[coverMap < coverMin] = coverMin
   
         else:
           # nonsense values
-          coverMap =  LoadMap(waterDistanceMapFile) 
+          coverMap =  self.LoadMap(waterDistanceMapFile) 
           XX,YY = np.mgrid[0:1:coverMap.shape[0]*1j,0:1:coverMap.shape[1]*1j]    #random.rand(coverMap.shape[0],coverMap.shape[1]) # fixme
           coverMap[:] = 25 # + 1.*XX - 2*YY
 
@@ -971,7 +1042,7 @@ class RegionalCalculationManager():
           timesList.append(["mineValue", time.time()])
 
         # Water Expenses
-        distanceToWater =  LoadMap(waterDistanceMapFile)
+        distanceToWater =  self.LoadMap(waterDistanceMapFile)
         distanceToWaterCost =  taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalWaterExpenses(theProblemManager,distanceToWater[countryIndxs])
         mineValueMap[countryIndxs] -=  distanceToWaterCost
         halfGradeMineValueMap[countryIndxs] -= distanceToWaterCost
@@ -985,8 +1056,8 @@ class RegionalCalculationManager():
 
         # Power Expenses
         # ** here we could Pre-calculate power supply costs to increase speed slightly**
-        distanceToPower =  LoadMap(powerDistanceMapFile)
-        distanceToPowerCost = taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalPowerExpenses(distanceToPower[countryIndxs])
+        distanceToPower =  self.LoadMap(powerDistanceMapFile)
+        distanceToPowerCost = taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalPowerExpenses(theProblemManager,distanceToPower[countryIndxs])
         mineValueMap[countryIndxs] -=  distanceToPowerCost
         halfGradeMineValueMap[countryIndxs] -= distanceToPowerCost
         doubleGradeMineValueMap[countryIndxs] -=  distanceToPowerCost
@@ -999,10 +1070,10 @@ class RegionalCalculationManager():
           timesList.append(["power", time.time()])
 
         # Transportation Expenses
-        distanceToRoad =  LoadMap(roadDistanceMapFile)
-        distanceToRail =  LoadMap(railDistanceMapFile)
-        roadTransportationDistance =  LoadMap(roadDistanceToPortMapFile)
-        railTransporationDistance =  LoadMap(railDistanceToPortMapFile)
+        distanceToRoad =  self.LoadMap(roadDistanceMapFile)
+        distanceToRail =  self.LoadMap(railDistanceMapFile)
+        roadTransportationDistance =  self.LoadMap(roadDistanceToPortMapFile)
+        railTransporationDistance =  self.LoadMap(railDistanceToPortMapFile)
 
 
         mineValueMap[countryIndxs] -= taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalTransportationExpenses( \
@@ -1066,7 +1137,7 @@ class RegionalCalculationManager():
           pl.show()    
         else:
           filename = theProblemManager.outputPrefix+"."+theProblemManager.outputType
-          SaveMap(filename, breakEvenFactor,theProblemManager.recordRange)
+          self.SaveMap(filename, breakEvenFactor,theProblemManager.recordRange)
 
         ######################################################################
 

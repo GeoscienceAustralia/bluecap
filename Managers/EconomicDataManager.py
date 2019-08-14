@@ -128,7 +128,7 @@ class EconomicDataManager():
     def CalculateGandAExpenses(self, problemManager, mineDataManager):
       """
       Calculate the general and administrative expense component of the mine costs 
-      Assumed equal to a fixed percentage of the overal mining and processing costs.
+      Assumed equal to a fixed percentage of the overall mining, G&A, and processing costs.
       """
       self.GandAOpex = mineDataManager.theMiningSystem.miningOpex + mineDataManager.theMiningSystem.miningCapex \
                       + mineDataManager.theProcessingSystem.processingOpex + mineDataManager.theProcessingSystem.processingCapex
@@ -302,4 +302,14 @@ class EconomicDataManager():
       self.atNPV  = self.CalculateNPV(self.atNCF)
       
       return self.atNPV 
+     
+     
+    def EstimateDirectEmployment(self, totalStartupCosts):
+      """
+      Estimate employment for the project
+      """
+      self.employment  = 10.24 * (totalStartupCosts/1e6)**0.53  
+      # jobs = 10.24 x (M$AUD 2018)^0.5314 
+      #(Based on operating employment data from Resources and Energy Major Projects List: 2015, 2018) 
       
+      return self.employment  

@@ -78,6 +78,8 @@ class RegionalCalculationManager():
       self.railDistanceToPortMapFile = ""
       self.roadDistanceToPortMapFile = ""
       
+      self.coverOffset = 0.0
+      
       self.dataBoundingBox = []
       self.outputBoundingBox = []
 
@@ -104,6 +106,8 @@ class RegionalCalculationManager():
         self.dataBoundingBox = GetAttributeVector(regionalDataNode,"dataBoundingBox")
       if(HasAttribute(regionalDataNode,"outputBoundingBox")):
         self.outputBoundingBox = GetAttributeVector(regionalDataNode,"outputBoundingBox")
+      if(HasAttribute(regionalDataNode,"coverOffset")):
+        self.coverOffset = GetAttributeValue(regionalDataNode,"coverOffset")
   
         
     def WriteXMLNode(self, node):
@@ -320,6 +324,7 @@ class RegionalCalculationManager():
         
         if(coverDepthMapFile):
           coverMap =  LoadMap(coverDepthMapFile)
+          coverMap += self.coverOffset
           
           # for MD basin only - remove
           #cc = coverMap==0
@@ -634,6 +639,7 @@ class RegionalCalculationManager():
         ###################################
         if(coverDepthMapFile):
           coverMap =  LoadMap(coverDepthMapFile)
+          coverMap += self.coverOffset
           # bound cover map
           coverMap[coverMap > coverMax] = coverMax
           coverMap[coverMap < coverMin] = coverMin
@@ -938,6 +944,7 @@ class RegionalCalculationManager():
         ###################################
         if(coverDepthMapFile):
           coverMap =  LoadMap(coverDepthMapFile)
+          coverMap += self.coverOffset
           # bound cover map
           coverMap[coverMap > coverMax] = coverMax
           coverMap[coverMap < coverMin] = coverMin

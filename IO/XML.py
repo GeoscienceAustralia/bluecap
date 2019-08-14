@@ -70,6 +70,12 @@ def GetAttributeFileString(node,attribute):
     theFileString = os.path.join(GetAttributeString(node,"ActiveFilePath"), theFileString)
   return theFileString
 
+def GetAttributeFileStringOrDefault(node,attribute,default):
+  if( HasAttribute(node,attribute) ):
+    return GetAttributeFileString(node,attribute)
+  else:
+    return default
+
 def GetAttributeString(node,attribute):
   rv = node.attrib[attribute]
   theParameterManager = ParameterManager()

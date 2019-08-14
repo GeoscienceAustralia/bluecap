@@ -33,6 +33,8 @@ from ParameterManager import ParameterManager
 from RegionalCalculationManager import RegionalCalculationManager
 from Functions.FunctionManager import FunctionManager
 
+# Common
+from Common.Version import GetGitSha
 
 # deep copy
 from copy import deepcopy
@@ -131,6 +133,9 @@ class ProblemManager():
       """
       Write problem to xml node
       """
+      
+      theGitSha = GetGitSha()
+      SetAttributeString(root,"sha",theGitSha)
       
       #functions
       theFunctionManager = FunctionManager()  

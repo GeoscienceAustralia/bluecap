@@ -76,6 +76,11 @@ class MineDataManager():
         print "Cover set to: ", self.theOreBody.cover 
         
         
+      # Infrastructure
+      if(HasChild(mineDataNode,"Infrastructure")):
+        infrastructureNode = GetChild(mineDataNode,"Infrastructure")
+        self.theInfrastructureManager.ParseXMLNode(infrastructureNode)      
+        
         
       # Economics
       if(HasChild(mineDataNode,"Economics")):

@@ -201,7 +201,7 @@ class RegionalCalculationManager():
         doTimer = False
         timesList = []
         
-        doEmploymentCalculation = False
+        doEmploymentCalculation = True
 
         if doTimer:
           #startTime = time.time()
@@ -486,7 +486,7 @@ class RegionalCalculationManager():
           minecapexFunc = interpolate.interp1d(coverDepths,mineCapExs)
           
           initialCapex = np.zeros(coverMap.shape)
-          positiveNPVindxs = mineValueMap>0
+          positiveNPVindxs = np.nan_to_num(mineValueMap) >0
           initialCapex[positiveNPVindxs] = minecapexFunc(coverMap[positiveNPVindxs])
           
           employmentEstimate = np.zeros(coverMap.shape)

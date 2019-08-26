@@ -407,6 +407,7 @@ class MiningSystemDataManager():
             
             # ore mined varies over the years (but on average is equal to the mine ore production capacity) - this may not be needed. 
             d = minD
+            dd = maxD # establish default for when mineLife == mineStartupTime (i.e. no loop)
             
             self.depths[self.mineStartupTime-1] = minD
             for year in range(self.mineStartupTime,self.mineLife-1):

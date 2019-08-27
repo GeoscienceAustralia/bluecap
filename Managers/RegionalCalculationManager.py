@@ -116,21 +116,51 @@ class RegionalCalculationManager():
     
     
     def SaveMap(self,filename, data, reportRange):
-
-	  if(reportRange):
-		np.savetxt(filename+"_range.txt",[np.nanmin(data), np.nanmax(data)])
-	
-	  if(filename[-3:] in ["jpg","tif","png"]  or  filename[-4:] == "tiff"):
-		pl.imsave(filename,data,origin="lower")
-	  elif( filename[-3:] == "npy"):
-		np.save(filename,data)
-	  elif( filename[-3:] == "txt"):
-		np.savetxt(filename,data)
-	  else:
-		print "Error unrecognized output type: ", filename
-	
-	  return 0  
+        
+      data_max = np.nanmax(data)
+      data_min = np.nanmin(data)
+      label_min = data_min
+      label_max = data_max
       
+      if(filename[-3:] in ["jpg","tif","png"]  or  filename[-4:] == "tiff"):
+        if self.type == "NPV":
+          if abs(data_min) > data_max:
+            data_max = -1.*data_min
+          if data_max > abs(data_min):
+            data_min = -1.*data_max
+          cmap = 'seismic'
+          label_min = data_min * 1e-06
+          label_max = data_max * 1e-06
+        elif self.type == "benefit_cost_ratio":
+          cmap = 'PiYG'
+          data_min = np.log(data_min)
+          data_max = np.log(data_max)
+          if abs(data_min) > data_max:
+            data_max = -1.*data_min
+          if data_max > abs(data_min):
+            data_min = -1.*data_max
+          label_min = np.exp(data_min)
+          label_max = np.exp(data_max)
+          data = np.log(data)
+        elif self.type == "breakeven_grade":
+          cmap = 'viridis'
+        elif self.type == "employment":
+          cmap = 'viridis'
+        else:
+          cmap = 'viridis'
+        pl.imsave(filename,data,origin="lower",cmap=pl.get_cmap(cmap),vmin=data_min,vmax=data_max)
+      elif( filename[-3:] == "npy"):
+        np.save(filename,data)
+      elif( filename[-3:] == "txt"):
+        np.savetxt(filename,data)
+      else:
+        print "Error unrecognized output type: ", filename
+      
+      if(reportRange):
+        np.savetxt(filename+"_range.txt",[np.round(label_min,2), np.round(label_max,2)])
+      
+      return 0
+ 
     def Run(self,problemManager):
       """
       Run regional calculation

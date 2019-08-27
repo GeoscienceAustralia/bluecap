@@ -905,6 +905,42 @@ class RegionalCalculationManager():
         stateMineValuesHalfGrade = {}
 
 
+		### check that current grade gives economic results
+		### if not increase grade by a factor (gradeAdjustment) until an economic grade is encountered at depth=0
+        gradeAdjustment = 1.0
+        theProblemManager.theMineDataManager.SetCoverDepth(coverDepths[10])
+		
+		
+        theProblemManager.EvaluateOCUGMines()
+        value = theProblemManager.theMineDataManager.theEconomicDataManager.atNPV
+          
+        theProblemManager.theMineDataManager.theOreBody.ScaleCommodityGrades(1./gradeAdjustment)
+		
+        adjustUp = True
+        if(value >= 0.0):
+		    gradeAdjustment *= 0.75
+		    adjustUp =False
+        else:
+		    gradeAdjustment *= 1.5
+		
+        for i in range(20):
+		  
+		  theProblemManager.theMineDataManager.theOreBody.ScaleCommodityGrades(gradeAdjustment)
+		
+		  theProblemManager.EvaluateOCUGMines()
+		  value = theProblemManager.theMineDataManager.theEconomicDataManager.atNPV
+          
+		  theProblemManager.theMineDataManager.theOreBody.ScaleCommodityGrades(1./gradeAdjustment)
+		  
+		  if(value >= 0.0 and not adjustUp):
+		    gradeAdjustment *= 0.75
+		  elif(value <= 0.0 and adjustUp):
+		    gradeAdjustment *= 1.5
+		  else:
+		    print "gradeAdjustment", gradeAdjustment, value
+		    break
+		
+
         ### original mine values
 
         for state in stateStrs:
@@ -916,7 +952,8 @@ class RegionalCalculationManager():
 
           theProblemManager.theMineDataManager.SetCoverDepth(depthOfCover)
   
-          # original grades 
+          # original grades (multiplied by grade adjustment)
+          theProblemManager.theMineDataManager.theOreBody.ScaleCommodityGrades(gradeAdjustment)
   
           value = theProblemManager.EvaluateOCUGMines()
           mineValues.append(value)
@@ -977,7 +1014,7 @@ class RegionalCalculationManager():
   
           # revert to original grade
   
-          theProblemManager.theMineDataManager.theOreBody.ScaleCommodityGrades(0.5)
+          theProblemManager.theMineDataManager.theOreBody.ScaleCommodityGrades(0.5/gradeAdjustment)
   
   
   
@@ -1153,6 +1190,11 @@ class RegionalCalculationManager():
         breakEvenFactor[countryIndxs] = 1+(-b + np.sqrt( b*b-4*a*c ) )/(2*a+1e-64)
 
         breakEvenFactor[stateIdsMap< 0.0] = np.nan  
+        
+        # correct for break even factor
+        if(gradeAdjustment != 1.0):
+          print "gradeAdjustment",gradeAdjustment
+          breakEvenFactor *= gradeAdjustment
         
         
         # clip to bounding box

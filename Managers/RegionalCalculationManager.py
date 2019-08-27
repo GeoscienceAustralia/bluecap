@@ -56,6 +56,8 @@ class RegionalCalculationManager():
       self.railDistanceToPortMapFile = ""
       self.roadDistanceToPortMapFile = ""
       
+      self.coverOffset = 0.0
+      
       self.dataBoundingBox = []
       self.outputBoundingBox = []
       
@@ -88,6 +90,8 @@ class RegionalCalculationManager():
         self.dataBoundingBox = GetAttributeVector(regionalDataNode,"dataBoundingBox")
       if(HasAttribute(regionalDataNode,"outputBoundingBox")):
         self.outputBoundingBox = GetAttributeVector(regionalDataNode,"outputBoundingBox")
+      if(HasAttribute(regionalDataNode,"coverOffset")):
+        self.coverOffset = GetAttributeValue(regionalDataNode,"coverOffset")
   
       if(HasAttribute(regionalDataNode,"stride")):
         self.stride = GetAttributeValue(regionalDataNode,"stride")
@@ -380,6 +384,7 @@ class RegionalCalculationManager():
         
         if(coverDepthMapFile):
           coverMap =  self.LoadMap(coverDepthMapFile)
+          coverMap += self.coverOffset
           
           # for MD basin only - remove
           #cc = coverMap==0
@@ -740,6 +745,7 @@ class RegionalCalculationManager():
         ###################################
         if(coverDepthMapFile):
           coverMap =  self.LoadMap(coverDepthMapFile)
+          coverMap += self.coverOffset
           # bound cover map
           coverMap[coverMap > coverMax] = coverMax
           coverMap[coverMap < coverMin] = coverMin
@@ -1044,6 +1050,7 @@ class RegionalCalculationManager():
         ###################################
         if(coverDepthMapFile):
           coverMap =  self.LoadMap(coverDepthMapFile)
+          coverMap += self.coverOffset
           # bound cover map
           coverMap[coverMap > coverMax] = coverMax
           coverMap[coverMap < coverMin] = coverMin

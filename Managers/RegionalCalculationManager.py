@@ -937,7 +937,7 @@ class RegionalCalculationManager():
 		  elif(value <= 0.0 and adjustUp):
 		    gradeAdjustment *= 1.5
 		  else:
-		    print "gradeAdjustment", gradeAdjustment, value
+		    #print "gradeAdjustment", gradeAdjustment, value
 		    break
 		
 
@@ -1193,7 +1193,7 @@ class RegionalCalculationManager():
         
         # correct for break even factor
         if(gradeAdjustment != 1.0):
-          print "gradeAdjustment",gradeAdjustment
+          #print "gradeAdjustment",gradeAdjustment
           breakEvenFactor *= gradeAdjustment
         
         
@@ -1214,6 +1214,9 @@ class RegionalCalculationManager():
 
 
         if(doPlots):
+        
+          pl.figure()
+          pl.plot(breakEvenFactor[500,:])
           
           pl.figure()
           pl.imshow(breakEvenFactor,origin="lower")

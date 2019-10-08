@@ -23,6 +23,14 @@ import numpy as np
 import pylab as pl
 from scipy import interpolate  # for interp1d
 
+# GeoTIFF functionality
+gdal_flag = False
+try:
+    from osgeo import gdal,osr
+    gdal_flag = True
+except ImportError:
+    pass
+
 import time  
 
 # Common
@@ -39,6 +47,45 @@ from Units.UnitManager import UnitManager
 from IO.CommandLine import ParseCommandLineArgs
 
 
+def array_to_raster(name, array, cmap, vmin, vmax, xpix=0.010002603, ypix=0.010002603, xmin=111.994998809, ymax=-9.99499852898, epsg=4326):
+    """Array > Raster
+    Save a raster from an array.
+
+    :name array:  str
+    :param array: ndarray
+    :xpix array:  float
+    :ypix array:  float
+    :xmin array:  float
+    :ymax array:  float
+    :epsg array:  int
+    """
+    
+    ny,nx = array.shape
+    
+    proj = osr.SpatialReference()
+    proj.ImportFromEPSG(epsg)
+    driver = gdal.GetDriverByName('GTiff')
+    
+    dataset = driver.Create(
+        name,
+        nx,
+        ny,
+        1,
+        gdal.GDT_Float32 )
+
+    dataset.SetGeoTransform((
+        xmin,
+        xpix,
+        0,
+        ymax,
+        0,
+        -ypix))
+
+    dataset.SetProjection(proj.ExportToWkt())
+    dataset.GetRasterBand(1).WriteArray(array)
+    dataset.GetRasterBand(1).SetNoDataValue(-99999)
+    dataset.FlushCache()  # Write to disk.
+    dataset = None
 
 class RegionalCalculationManager():
     def __init__(self):
@@ -125,7 +172,8 @@ class RegionalCalculationManager():
       data_min = np.nanmin(data)
       label_min = data_min
       label_max = data_max
-      
+      cmap = 'viridis'
+
       if(filename[-3:] in ["jpg","tif","png"]  or  filename[-4:] == "tiff"):
         if self.type == "NPV":
           if abs(data_min) > data_max:
@@ -152,7 +200,10 @@ class RegionalCalculationManager():
           cmap = 'viridis'
         else:
           cmap = 'viridis'
-        pl.imsave(filename,data,origin="lower",cmap=pl.get_cmap(cmap),vmin=data_min,vmax=data_max)
+        if (filename[-3:] == "tif"  or  filename[-4:] == "tiff") and (gdal_flag):
+          array_to_raster(filename, data[::-1], cmap, label_min, label_max)
+        else:
+          pl.imsave(filename,data,origin="lower",cmap=pl.get_cmap(cmap),vmin=data_min,vmax=data_max)
       elif( filename[-3:] == "npy"):
         np.save(filename,data)
       elif( filename[-3:] == "txt"):

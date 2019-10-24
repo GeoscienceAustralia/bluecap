@@ -47,7 +47,7 @@ from Units.UnitManager import UnitManager
 from IO.CommandLine import ParseCommandLineArgs
 
 
-def array_to_raster(name, array, cmap, vmin, vmax, xpix=0.010002603, ypix=0.010002603, xmin=111.994998809, ymax=-9.99499852898, epsg=4326):
+def array_to_raster(name, array, xpix=0.010002603, ypix=0.010002603, xmin=111.994998809, ymax=-9.99499852898, epsg=4326):
     """Array > Raster
     Save a raster from an array.
 
@@ -175,7 +175,12 @@ class RegionalCalculationManager():
       cmap = 'viridis'
 
       if(filename[-3:] in ["jpg","tif","png"]  or  filename[-4:] == "tiff"):
-        if self.type == "NPV":
+        if ((filename[-6:] == "geotif") or (filename[-7:] == "geotiff")) and gdal_flag:
+          if self.type == "NPV":
+            array_to_raster(filename.replace('geotif','tif'), data[::-1]*1e-06)
+          else:
+            array_to_raster(filename.replace('geotif','tif'), data[::-1])
+        elif self.type == "NPV":
           if abs(data_min) > data_max:
             data_max = -1.*data_min
           if data_max > abs(data_min):
@@ -200,9 +205,7 @@ class RegionalCalculationManager():
           cmap = 'viridis'
         else:
           cmap = 'viridis'
-        if (filename[-3:] == "tif"  or  filename[-4:] == "tiff") and (gdal_flag):
-          array_to_raster(filename, data[::-1], cmap, label_min, label_max)
-        else:
+        if not gdal_flag:
           pl.imsave(filename,data,origin="lower",cmap=pl.get_cmap(cmap),vmin=data_min,vmax=data_max)
       elif( filename[-3:] == "npy"):
         np.save(filename,data)

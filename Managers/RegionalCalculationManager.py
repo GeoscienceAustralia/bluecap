@@ -180,7 +180,9 @@ class RegionalCalculationManager():
             array_to_raster(filename.replace('geotif','tif'), data[::-1]*1e-06)
           else:
             array_to_raster(filename.replace('geotif','tif'), data[::-1])
-        elif self.type == "NPV":
+          filename = filename.replace("tiff", "tif")
+          filename = filename.replace("geotif",  "png")
+        if self.type == "NPV":
           if abs(data_min) > data_max:
             data_max = -1.*data_min
           if data_max > abs(data_min):
@@ -205,8 +207,8 @@ class RegionalCalculationManager():
           cmap = 'viridis'
         else:
           cmap = 'viridis'
-        if not gdal_flag:
-          pl.imsave(filename,data,origin="lower",cmap=pl.get_cmap(cmap),vmin=data_min,vmax=data_max)
+        #if not gdal_flag:
+        pl.imsave(filename,data,origin="lower",cmap=pl.get_cmap(cmap),vmin=data_min,vmax=data_max)
       elif( filename[-3:] == "npy"):
         np.save(filename,data)
       elif( filename[-3:] == "txt"):

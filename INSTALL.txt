@@ -1,0 +1,72 @@
+#################################################
+#                                               #
+#                   BLUECAP                     #
+#                                               #
+#################################################
+
+Copyright (C) 2019, Monash University, Geoscience Australia
+Copyright (C) 2018, Stuart Walsh 
+
+Licensed under the Apache License, Version 2.0
+
+#   Required Modules
+####################
+
+Bluecap is written in Python2.7 and requires the following modules to run:
+numpy; scipy; pylab or matplotlib; and the pint unit manager. 
+
+All four can be installed with the python package manager: "pip".
+
+# numpy
+pip install numpy
+
+# scipy
+pip install scipy
+
+# pylab/matplotlib 
+pip install matplotlib
+
+# pint unit manager
+pip install pint
+
+
+#   Running Bluecap
+###################
+
+Once the modules have been installed, Bluecap can be run from the command line as follows:
+
+python /PATH/TO/bluecap/main.py -i ExampleInput.xml
+
+
+#   Bluecap Alias
+#################
+
+To avoid the inconvenience of writing the full path each time, we recommend using an alias to run Bluecap. To do this, first open the ".bash_profile" file in your home directory, with a standard text editor, e.g. 
+
+gedit ~/.bash_profile 
+
+and append the following line to the file:
+
+alias runBluecap="python /PATH/TO/bluecap/main.py"
+
+Once this has been done, save the profile, and restart any open terminals to activate the alias.  Bluecap can now be called as follows:
+
+runBluecap -i ExampleInput.xml
+
+#   License
+#################
+
+Bluecap is released under the Apache License, Version 2.0 (the "License");
+you may not use this software except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+The project uses third party components which may have different licenses. 
+Please refer to individual components for more details.

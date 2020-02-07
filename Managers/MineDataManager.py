@@ -244,8 +244,6 @@ class MineDataManager():
       pl.figure()
       
       
-      #print self.theMiningSystem.miningCapex
-      
       inflation =  (1.0+self.theEconomicDataManager.inflation)**np.array( range( self.theMiningSystem.mineLife ) )
      
       

@@ -48,10 +48,9 @@ def ParseCommandLineArgs():
 		theParameterManager.SetParameter(name,paramString)
   
   
-  # sanity checks
+  # sanity check
   if (not rv.input):
     print ("Warning - failed to provide input file")
-    #raise  IFDError("Input error","Failed to provided input file")
   
   
   return rv

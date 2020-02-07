@@ -142,15 +142,6 @@ class UserDefinedFunction():
        Generate named function from xml tree node. 
        """
        self.name = GetAttributeString(functionObjectNode,"name")
-       
-    # The factory that creates the UserDefinedFunction Object - attempt at making more general
-    # @classmethod
-    #def GetFactory(cls):
-    #  
-    #  class FactoryClass:
-    #    def CreateFromXML(self,xmlNode,problemManager): return cls.CreateFromXML(xmlNode,problemManager)
-    #    
-    #  return FactoryClass()
 
 
  

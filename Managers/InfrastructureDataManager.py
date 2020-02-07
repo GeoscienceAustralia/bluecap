@@ -75,7 +75,6 @@ class InfrastructureDataManager():
       """
       Generate processing system data from xml tree node. 
       """
-      #self.powerSupply = GetAttributeStringOrDefault(infrastructureNode,"powerSupply", self.powerSupply)
       self.calculateDiesel = GetAttributeStringOrDefault(infrastructureNode,"calculateDiesel", self.calculateDiesel)
       self.calculateGas = GetAttributeValueOrDefault(infrastructureNode,"calculateGas", self.calculateGas)
       
@@ -273,7 +272,7 @@ class InfrastructureDataManager():
       
       self.waterCapex[0] =  distanceScale*self.distanceToWater/oneKm
       
-      #Water Opex not accounted for as included in mine and processing opex
+      #Water Opex not explicitly accounted for as included in mine and processing opex
       self.waterOpex = np.zeros(numYears)
       
     def CalculateRegionalWaterExpenses(self, problemManager,distanceToWater):
@@ -290,9 +289,6 @@ class InfrastructureDataManager():
         diam = 150e-3
       
       distanceScale=  2.6229e6*diam - 125528   # empirical fit to pipeline data per km
-     
-      #print "water diam", diam*1e3  # diam in mm
-      #print "pipe cost ($/km)", distanceScale  # cost in 2018 dollars
       
       rv =  distanceScale*distanceToWater
       return rv
@@ -336,32 +332,6 @@ class InfrastructureDataManager():
       
       #Power opex is ignored as included in mine and processing opex
       
-      
-      """
-      if(self.calculateDiesel):
-        self.powerCapex[:] =0
-        AUD2016 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2016,2018)
-        dieselLCOE = 350*AUD2016   # Renewable energy in Australian mining sector estimate
-        retailCOE = 100*AUD2018
-        self.powerOpex = mineDataManager.theProcessingSystem.processingPower*( dieselLCOE - retailCOE)
-        
-      if(self.calculateGas):
-        self.powerCapex[:] =0
-        AUD2016 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2016,2018)
-        AUD2018 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2018,2018)  # = 1
-        gasLCOE = 120*AUD2016  # Renewable energy in Australian mining sector estimate
-        retailCOE = 100*AUD2018
-        self.powerOpex = mineDataManager.theProcessingSystem.processingPower*( gasLCOE - retailCOE)
-        theFunctionManager = FunctionManager()
-        
-        piplelineCostPerKM = 0.315e6*AUD2014  # from core gas production and transmission costs 8 inch class 600 5.6mm wall.
-      
-        self.powerOpex += piplelineCostPerKM*self.distanceToGas
-       """
-      
-        
-        
-
 
  
     def CalculateRegionalPowerExpenses(self, problemManager, distanceToPower):
@@ -395,15 +365,6 @@ class InfrastructureDataManager():
         dieselNPC = problemManager.theMineDataManager.theEconomicDataManager.CalculateNPV(dieselCosts)
         powerCosts[ powerCosts > dieselNPC ] = dieselNPC
     
-      """
-      if(self.calculateGas):
-        AUD2018 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2018,2018) * theUnitManager.ConvertToBaseUnits("AUD") 
-        gasLCOE = 120*AUD2016  # Renewable energy in Australian mining sector estimate
-        retailCOE = 100*AUD2018
-        gasCosts = problemManager.theMineDataManager.theProcessingSystem.processingPower*( dieselLCOE - retailCOE)
-        gasNPC = mineDataManager.theEconomicDataManager.CalculateNPV(gasCosts)
-        powerCosts[ powerCosts > gasNPC ] = gasNPC
-      """
         
       
       return powerCosts
@@ -419,12 +380,9 @@ class InfrastructureDataManager():
       theUnitManager = UnitManager()
       gasCosts = np.zeros(distanceToGas.shape)
       
-      #AUD2010 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2010,2018) * theUnitManager.ConvertToBaseUnits("AUD")  #in today's dollars
       AUD2016 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2016,2018) * theUnitManager.ConvertToBaseUnits("AUD") 
       AUD2014 = MiningEquipmentPriceIndex.IndexedPrice(1.0,2014,2018) * theUnitManager.ConvertToBaseUnits("AUD") 
       
-      
-      #powerCosts[distanceToPower > 190] =  925000*AUD2014
       
       piplelineCostPerKM = 0.315e6*AUD2014  # from core gas production and transmission costs 8 inch class 600 5.6mm wall.
       

@@ -373,11 +373,9 @@ class RegionalCalculationManager():
           concentrateCapacity = np.max(theProblemManager.theMineDataManager.theProcessingSystem.concentrateProduced)
           concentrateCapacities.append(concentrateCapacity)
 
-        #print coverDepths
-        #print mineValues
   
         if doTimer:
-          #coverFuncTime = time.time()
+        
           timesList.append(["coverFunc", time.time()])
           
 
@@ -411,8 +409,6 @@ class RegionalCalculationManager():
 			pl.plot(coverDepths,mineTypes)
 
 
-        #pl.show()
-
 
         ## regional mine cost calculation
 
@@ -428,7 +424,6 @@ class RegionalCalculationManager():
         stateIdsMapFile = self.stateIdsMapFile
 
         if doTimer:
-          #startMapsTime = time.time()
           timesList.append(["startMaps", time.time()])
 
         stateIdsMap =  self.LoadMap(stateIdsMapFile)
@@ -441,12 +436,6 @@ class RegionalCalculationManager():
         if(coverDepthMapFile):
           coverMap =  self.LoadMap(coverDepthMapFile)
           coverMap += self.coverOffset
-          
-          # for MD basin only - remove
-          #cc = coverMap==0
-          #cc[5000::,:] = 0 
-          #cc[:,5000::] = 0 
-          #stateIdsMap[cc] = -1
           
           # bound cover map
           coverMap[coverMap > coverMax] = coverMax
@@ -503,15 +492,12 @@ class RegionalCalculationManager():
           filename = theProblemManager.outputPrefix+"_waterCost.npy"  
           dd = np.zeros(coverMap.shape)
           dd[countryIndxs] = taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalWaterExpenses(theProblemManager,distanceToWater[countryIndxs])
-          #print "Saving: ", filename
           self.SaveMap(filename, dd,False)
 
         if doTimer:
-          #waterTime = time.time()
           timesList.append(["water", time.time()])
 
         # Power Expenses
-        #Todo("Pre-calculate power supply costs")
         distanceToPower =  self.LoadMap(powerDistanceMapFile)
         
         if(theProblemManager.theMineDataManager.theInfrastructureManager.calculateGas):
@@ -532,18 +518,15 @@ class RegionalCalculationManager():
           filename = theProblemManager.outputPrefix+"_powerCost.npy"  
           dd = np.zeros(coverMap.shape)
           dd[countryIndxs] = taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalPowerExpenses(theProblemManager,distanceToPower[countryIndxs])
-          #print "Saving: ", filename
           self.SaveMap(filename, dd,False)
           
           if(theProblemManager.theMineDataManager.theInfrastructureManager.calculateGas):
 			  filename = theProblemManager.outputPrefix+"_gasCost.npy"  
 			  dd = np.zeros(coverMap.shape)
 			  dd[countryIndxs] = taxRelief* theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalGasExpenses(theProblemManager,distanceToGas[countryIndxs])
-			  #print "Saving: ", filename
 			  self.SaveMap(filename, dd,False)
 
         if doTimer:
-          #powerTime = time.time()
           timesList.append(["power", time.time()])
 
         # Transportation Expenses
@@ -565,12 +548,11 @@ class RegionalCalculationManager():
                                                               distanceToRoad[countryIndxs], roadTransportationDistance[countryIndxs], \
                                                               distanceToRail[countryIndxs], railTransporationDistance[countryIndxs], \
                                                               coverMap[countryIndxs],concentrateCapacityFunc,concentrateDiscountedTotalMassFunc)
-          #print "Saving: ", filename
+                                                              
           self.SaveMap(filename, dd,False)
 
 
         if doTimer:
-          #transportTime = time.time()
           timesList.append(["transport", time.time()])
 
 
@@ -594,7 +576,6 @@ class RegionalCalculationManager():
             
           filename = theProblemManager.outputPrefix+"_employment.npy"  
           
-          #print "Saving: ", filename
           self.SaveMap(filename, employmentEstimate,False)
 
         
@@ -605,7 +586,6 @@ class RegionalCalculationManager():
 
 
         if doTimer:
-          #transportTime = time.time()
           timesList.append(["end", time.time()])
 
         ######################################################################
@@ -615,7 +595,6 @@ class RegionalCalculationManager():
         if(doPlots):
           pl.figure()
 
-          #mineValueMap[mineValueMap< 0.0] = 0.0 
           pl.imshow(mineValueMap,origin="lower")
 
           pl.colorbar()
@@ -640,8 +619,6 @@ class RegionalCalculationManager():
 
 
 
-        #pl.figure()
-        #pl.imshow(coverMap,origin="lower",cmap="pink")
         
         if(doPlots):
           pl.show()    
@@ -651,7 +628,6 @@ class RegionalCalculationManager():
           if(doAll):
             filename = theProblemManager.outputPrefix+".npy"
             
-          #print "Saving: ", filename
           self.SaveMap(filename, mineValueMap,theProblemManager.recordRange)
         
         return 
@@ -702,7 +678,6 @@ class RegionalCalculationManager():
 
         for depthOfCover in coverDepths:
 
-          # fixme need to set distance to infrastructure to 0
           theProblemManager.theMineDataManager.SetCoverDepth(depthOfCover)
   
           value = theProblemManager.EvaluateOCUGMines()
@@ -747,11 +722,7 @@ class RegionalCalculationManager():
           concentrateCapacities.append(concentrateCapacity)
   
 
-        #print coverDepths
-        #print mineValues
-  
         if doTimer:
-          #coverFuncTime = time.time()
           timesList.append(["coverFunc", time.time()])
 
 
@@ -774,8 +745,6 @@ class RegionalCalculationManager():
           pl.figure()
           pl.plot(coverDepths,mineTypes)
 
-          #pl.show()
-
 
         ## regional mine cost calculation
 
@@ -790,7 +759,6 @@ class RegionalCalculationManager():
         stateIdsMapFile  = self.stateIdsMapFile
 
         if doTimer:
-          #startMapsTime = time.time()
           timesList.append(["startMaps", time.time()])
 
         stateIdsMap =  self.LoadMap(stateIdsMapFile)
@@ -824,7 +792,6 @@ class RegionalCalculationManager():
           mineCostMap[stateIndxs] = mineCostFunc(coverMap[stateIndxs])
 
         if doTimer:
-          #mineValueFuncTime = time.time()
           timesList.append(["mineValue", time.time()])
 
         # Water Expenses
@@ -832,17 +799,14 @@ class RegionalCalculationManager():
         mineCostMap[countryIndxs] +=  theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalWaterExpenses(theProblemManager,distanceToWater[countryIndxs])
 
         if doTimer:
-          #waterTime = time.time()
           timesList.append(["water", time.time()])
 
         # Power Expenses
-        #Todo("Pre-calculate power supply costs")
         distanceToPower =  self.LoadMap(powerDistanceMapFile)
         mineCostMap[countryIndxs] +=  theProblemManager.theMineDataManager.theInfrastructureManager.CalculateRegionalPowerExpenses(theProblemManager,distanceToPower[countryIndxs])
 
 
         if doTimer:
-          #powerTime = time.time()
           timesList.append(["power", time.time()])
 
         # Transportation Expenses
@@ -859,7 +823,6 @@ class RegionalCalculationManager():
 
 
         if doTimer:
-          #transportTime = time.time()
           timesList.append(["transport", time.time()])
 
 
@@ -876,7 +839,6 @@ class RegionalCalculationManager():
 
 
         if doTimer:
-          #transportTime = time.time()
           timesList.append(["end", time.time()])
 
         ######################################################################
@@ -933,7 +895,6 @@ class RegionalCalculationManager():
         timesList = []
 
         if doTimer:
-          #startTime = time.time()
           timesList.append(["start", time.time()])
 
         # calculate mine cost, life etc as function of depth of cover (in meters)
@@ -1076,9 +1037,7 @@ class RegionalCalculationManager():
   
   
 
-        #print coverDepths
-        #print mineValues
-  
+        
         if doTimer:
           #coverFuncTime = time.time()
           timesList.append(["coverFunc", time.time()])
@@ -1116,9 +1075,6 @@ class RegionalCalculationManager():
           pl.plot(coverDepths,mineTypes)
 
 
-        #pl.show()
-
-
         ## regional mine cost calculation
 
         coverDepthMapFile = self.coverDepthMapFile
@@ -1151,7 +1107,7 @@ class RegionalCalculationManager():
         else:
           # nonsense values
           coverMap =  self.LoadMap(waterDistanceMapFile) 
-          XX,YY = np.mgrid[0:1:coverMap.shape[0]*1j,0:1:coverMap.shape[1]*1j]    #random.rand(coverMap.shape[0],coverMap.shape[1]) # fixme
+          XX,YY = np.mgrid[0:1:coverMap.shape[0]*1j,0:1:coverMap.shape[1]*1j]    
           coverMap[:] = 25 # + 1.*XX - 2*YY
 
           coverMap = 25  + 1.*XX - 2*YY
@@ -1173,7 +1129,6 @@ class RegionalCalculationManager():
           doubleGradeMineValueMap[stateIndxs] = doubleGradeMineValueFunc(coverMap[stateIndxs])
 
         if doTimer:
-          #mineValueFuncTime = time.time()
           timesList.append(["mineValue", time.time()])
 
         # Water Expenses
@@ -1186,7 +1141,6 @@ class RegionalCalculationManager():
         del distanceToWaterCost
 
         if doTimer:
-          #waterTime = time.time()
           timesList.append(["water", time.time()])
 
         # Power Expenses
@@ -1201,7 +1155,6 @@ class RegionalCalculationManager():
 
 
         if doTimer:
-          #powerTime = time.time()
           timesList.append(["power", time.time()])
 
         # Transportation Expenses
@@ -1227,7 +1180,6 @@ class RegionalCalculationManager():
                                                               coverMap[countryIndxs],doubleConcentrateCapacityFunc,doubleConcentrateDiscountedTotalMassFunc)
 
         if doTimer:
-          #transportTime = time.time()
           timesList.append(["transport", time.time()])
 
 
@@ -1262,10 +1214,6 @@ class RegionalCalculationManager():
           timesList.append(["end", time.time()])
 
         ######################################################################
-
-        #pl.figure()
-        #pl.imshow(mineValueMap,origin="lower")
-        #pl.colorbar()
 
 
 

@@ -63,7 +63,6 @@ class OreBodyDataManager():
       Generate Ore body data from xml tree node. 
       """
       self.type = GetAttributeString(orebodyDataNode,"type")
-      #self.grade = GetAttributeValue(orebodyDataNode,"grade")
       self.dip = GetAttributeValue(orebodyDataNode,"dip")
       
       self.cover = GetAttributeValue(orebodyDataNode,"cover")
@@ -95,7 +94,6 @@ class OreBodyDataManager():
       Write ore body to xml node
       """
       SetAttributeString(node,"type",self.type)
-      #SetAttributeString(node,"grade",self.grade)
       SetAttributeString(node,"dip",self.dip)
       
       SetAttributeString(node,"length",self.length)

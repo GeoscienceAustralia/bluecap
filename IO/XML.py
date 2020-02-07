@@ -30,7 +30,6 @@ import os.path
 ## Load and parse an xml file and return the root node
 def LoadXMLFile(filename):
   tree = ElementTree.parse(filename)
-  ## fixme - we may want to do additional parsing here to add included files etc. 
   root = tree.getroot()
   
   activePath = os.path.abspath(os.path.dirname(filename))
@@ -177,11 +176,10 @@ def ResolveIncludes(node,activePath):
       for includedChild in GetChildren(includeRoot):
         ResolveIncludes(includedChild,newActivePath)
         node.append(includedChild)
-      #node.remove(child)
+        
     else:
       ResolveIncludes(child,activePath)
       
-  # clean up - bit ugly as removing a child node seems to break for loop
   hasIncludes = True
   while(hasIncludes):  
     hasIncludes = False   

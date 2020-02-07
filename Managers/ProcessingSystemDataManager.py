@@ -122,7 +122,6 @@ class ProcessingSystemDataManager():
       self.oreProcessed[-1] = carryOver +  mineDataManager.theMiningSystem.oreMined[-1] # final year
       
       
-      # fixme - need to make this an input function
       # convert tonnes processed each year to the number of Mwh based on powerlaw fit
       self.processingPower = 3.96*(self.oreProcessed  )**0.703  # in Mwh
       
@@ -187,7 +186,6 @@ class ProcessingSystemDataManager():
       opexPerTonne =  processingOpexFunc.f( [self.processingCapacity  *  theUnitManager.ConvertTo("1e6 tonne")] )
       
       print "Processing method: ", self.processingMethod
-      #print "Processing capacity (kg ore)", self.processingCapacity
       print "Processing capacity (Mt ore)", self.processingCapacity  *  theUnitManager.ConvertTo("1e6 tonne")
       print "Processing Opex Per Tonne ", opexPerTonne
       

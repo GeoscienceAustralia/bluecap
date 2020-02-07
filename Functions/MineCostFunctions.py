@@ -52,41 +52,4 @@ class FunctionSetFunction:
 
 
 
-totalSmallOpenPitMineEstimate = PowerlawFunction("total",160000,0.515)
-
-priceComponentsFunction = FunctionSetFunction("SmallOpenPitMineEstimate")
-
-priceComponentData = [
-["Labour",30100,0.443],
-["Equipment",121000,0.516],
-["Steel",2930,0.525],
-["Fuel",262,0.721],
-["Lube",50.6,0.762],
-["Explosives",24.0,0.963],
-["Tires",16.5,0.904],
-["Construction material",8210.,0.470],
-["Sales tax",7630,0.520]
-]
-
-
-for [name,a,b] in priceComponentData:
-  priceComponentsFunction.addFunction( name,PowerlawFunction(name,a,b) )
-
-print priceComponentsFunction.f(2000.)
-print totalSmallOpenPitMineEstimate.f(2000.)
-
-xs = np.linspace(1000.,20000.)
-numX = len(xs)
-pcFs = np.zeros(numX)
-totFs = np.zeros(numX)
-
-for i in range(numX):
-  pcFs[i] = priceComponentsFunction.f(xs[i])
-  totFs[i] = totalSmallOpenPitMineEstimate.f(xs[i])
-  
-pl.loglog(xs,pcFs)
-pl.loglog(xs,totFs)
-
-pl.show()
-
 

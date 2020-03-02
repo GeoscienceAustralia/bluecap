@@ -34,7 +34,7 @@ except ImportError:
 import time  
 
 # Common
-from Common.Common import Todo,Fixme
+from Common.Common import Todo
 
 from IO.XML import HasChild,GetChild,AddChild,GetChildren
 from IO.XML import HasAttribute,GetAttributeString,GetAttributeFileString,GetAttributeFileStringOrDefault
@@ -333,7 +333,6 @@ class RegionalCalculationManager():
 
         for depthOfCover in coverDepths:
 
-          # fixme need to set distance to infrastructure to 0
           theProblemManager.theMineDataManager.SetCoverDepth(depthOfCover)
   
           value = theProblemManager.EvaluateOCUGMines()
@@ -443,7 +442,7 @@ class RegionalCalculationManager():
   
         else:
           # nonsense values for testing
-          coverMap =  self.LoadMap(waterDistanceMapFile) # fixme
+          coverMap =  self.LoadMap(waterDistanceMapFile) 
           XX,YY = np.mgrid[0:1:coverMap.shape[0]*1j,0:1:coverMap.shape[1]*1j]   
           coverMap[:] = 25 # + 1.*XX - 2*YY
 
@@ -776,8 +775,8 @@ class RegionalCalculationManager():
   
         else:
           # nonsense values
-          coverMap =  self.LoadMap(waterDistanceMapFile) # fixme
-          XX,YY = np.mgrid[0:1:coverMap.shape[0]*1j,0:1:coverMap.shape[1]*1j]    #random.rand(coverMap.shape[0],coverMap.shape[1]) # fixme
+          coverMap =  self.LoadMap(waterDistanceMapFile) 
+          XX,YY = np.mgrid[0:1:coverMap.shape[0]*1j,0:1:coverMap.shape[1]*1j]    #random.rand(coverMap.shape[0],coverMap.shape[1]) 
           coverMap[:] = 25 # + 1.*XX - 2*YY
 
           coverMap = 25  + 1.*XX - 2*YY

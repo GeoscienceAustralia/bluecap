@@ -24,7 +24,7 @@ import numpy as np
 from scipy.optimize import brentq
 
 # Common
-from Common.Common import Todo,Fixme
+from Common.Common import Todo
 
 # IO
 from IO.XML import HasChild,GetChild,AddChild

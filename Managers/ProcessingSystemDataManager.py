@@ -23,7 +23,7 @@ import numpy as np
 
 
 # Common
-from Common.Common import Todo,Fixme
+from Common.Common import Todo
 
 # IO
 from IO.XML import HasChild,GetChild,AddChild

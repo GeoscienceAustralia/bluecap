@@ -1,5 +1,5 @@
 """
-Copyright (C) 2019, Monash University, Geoscience Australia
+Copyright (C) 2019-2021, Monash University, Geoscience Australia
 Copyright (C) 2018, Stuart Walsh 
 
 Bluecap is released under the Apache License, Version 2.0 (the "License");
@@ -29,18 +29,22 @@ import os
 
 
 class UnitManager(object):
-    """
-        Singleton object to convert into consistent set of base units
-        Usage:
-    from Units.UnitManager import UnitManager
-    theUnitManager = UnitManager()
-    theUnitManager.ConvertToBaseUnits("50 m")
-    fiftyFeetInBaseUnits = theUnitManager.ConvertToBaseUnits(50,"feet")
-    valueInFeet = valueInBaseUnits*theUnitManager.ConvertTo("feet")
+    """Singleton object to convert values into a consistent set of base units
+    
+    Usage:
+      from Units.UnitManager import UnitManager
+      theUnitManager = UnitManager()
+      theUnitManager.ConvertToBaseUnits("50 m")
+      fiftyFeetInBaseUnits = theUnitManager.ConvertToBaseUnits(50,"feet")
+      valueInFeet = valueInBaseUnits*theUnitManager.ConvertTo("feet")
     """
     
     class __UnitManager:
+      """ The unit manager is a singleton object."""
+    
       def __init__(self):
+            """Initialize the singleton object."""
+            
             # would be better to define inline but seems pint does not allow yet
             dir_path = os.path.dirname(os.path.realpath(__file__)) 
             bluecapUnitsPath =  os.path.join(dir_path, "BlueCap_units.txt")  
@@ -49,6 +53,7 @@ class UnitManager(object):
             self.ureg = pint.UnitRegistry(filename = bluecapUnitsPath)
   
       def ConvertToBaseUnits(self,value,units=""):
+        """Convert from arbitrary units into the base units."""
         if(units):
           return value * self.ureg(units).to_base_units().magnitude
         else:
@@ -59,10 +64,11 @@ class UnitManager(object):
           return rv
   
       def ConvertTo(self,units):
+        """Convert from base units into the stated units."""
         return 1.0/self.ureg(units).to_base_units().magnitude
 
           
-    instance = None
+    instance = None    # this class variable points to the singleton object
     def __new__(cls): # __new__ always a classmethod
         if not UnitManager.instance:
             UnitManager.instance = UnitManager.__UnitManager()

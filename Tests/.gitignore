@@ -1,0 +1,8 @@
+**.pyc
+**.txt
+**.xml
+**.DS_Store
+**__pycache__
+**.pytest_cache
+**.out*npy
+**.diff.npy

@@ -1,5 +1,5 @@
 """
-Copyright (C) 2019, Monash University, Geoscience Australia
+Copyright (C) 2019-2021, Monash University, Geoscience Australia
 Copyright (C) 2018, Stuart Walsh 
 
 Bluecap is released under the Apache License, Version 2.0 (the "License");
@@ -23,9 +23,10 @@ import argparse
 import string
 
 from Managers.ParameterManager import ParameterManager
+from Common.Common import BluecapError
 
 def ParseCommandLineArgs():
-
+  """ Interpret the command line arguments provided to bluecap, record parameters and return the remainder."""
 
   theParameterManager = ParameterManager()  
       
@@ -38,19 +39,19 @@ def ParseCommandLineArgs():
   
   # strip out params
   if (rv.param):
-	  for param in rv.param:
-		splt = string.split(param,"=",1)
-		if (len(splt) < 2 ): 
-		  print "error - input params should be in the form -p key=value "
-		  exit()
-		name = splt[0].strip()
-		paramString = splt[1]
-		theParameterManager.SetParameter(name,paramString)
+      for param in rv.param:
+        splt = string.split(param,"=",1)
+        if (len(splt) < 2 ): 
+          raise BluecapError("Error: Input parameters should be in the form -p key=value ")
+        name = splt[0].strip()
+        paramString = splt[1]
+        theParameterManager.SetParameter(name,paramString)
   
   
-  # sanity check
+  # sanity checks
   if (not rv.input):
-    print ("Warning - failed to provide input file")
+    print("Warning - failed to provide input file")
+    #raise  IFDError("Input error","Failed to provided input file")
   
   
   return rv

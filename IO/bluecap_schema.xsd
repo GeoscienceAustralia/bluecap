@@ -1,0 +1,413 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+
+<!-- Orebody Block-->
+
+<xs:complexType name="OrebodyBlock">
+	<xs:sequence>
+	  <xs:element name="Commodity"  maxOccurs="unbounded" minOccurs="0">
+		<xs:complexType>
+		  <xs:simpleContent>
+			<xs:extension base="xs:string">
+			  <xs:attribute type="xs:string" name="name" use="required"/>
+			  <xs:attribute type="xs:string" name="grade" use="required"/>
+			</xs:extension>
+		  </xs:simpleContent>
+		</xs:complexType>
+	  </xs:element>
+	  <xs:group ref="IfOrIncludeBlock"/>
+	</xs:sequence>
+	<xs:attribute type="xs:float" name="lat" use="optional"/>
+	<xs:attribute type="xs:float" name="long" use="optional"/>
+	<xs:attribute type="xs:string" name="name" use="optional"/>
+	<xs:attribute type="xs:string" name="type" use="optional"/>
+	<xs:attribute type="xs:string" name="cover" use="optional"/>
+	<xs:attribute type="xs:string" name="length" use="optional"/>
+	<xs:attribute type="xs:string" name="width" use="optional"/>
+	<xs:attribute type="xs:string" name="height" use="optional"/>
+	<xs:attribute type="xs:string" name="dip" use="optional"/>
+</xs:complexType>
+
+
+ <!-- Parameters -->
+ <xs:complexType name="ParameterBlock">
+   <xs:attribute name="name" type="xs:string" use="required"/>
+   <xs:attribute name="value" type="xs:string" use="required"/>
+</xs:complexType>
+
+ <xs:complexType name="ParametersBlock">
+   <xs:choice minOccurs="0" maxOccurs="unbounded">
+     <xs:element name="Parameter"   type="ParameterBlock"/>
+     <xs:group ref="IfOrIncludeBlock"/>
+   </xs:choice>
+</xs:complexType>
+
+<!-- If then else/Include -->
+<xs:complexType name="ThenElseBlock"> 
+<xs:choice minOccurs="0" maxOccurs="unbounded">
+  <xs:any minOccurs="0"/>
+</xs:choice>
+</xs:complexType>
+
+<xs:complexType name="IfBlock">
+  <xs:sequence>
+    <xs:element name="Then" type="ThenElseBlock"
+			  minOccurs="0" maxOccurs="1"/>
+    <xs:element name="Else" type="ThenElseBlock"
+			  minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+  <xs:attribute name="condition" type="xs:string" use="required"/>
+</xs:complexType>
+
+<xs:complexType name="IncludeBlock">
+<xs:attribute name="file" type="xs:string" use="required"/>
+</xs:complexType>
+
+<xs:complexType name="NoteBlock">
+</xs:complexType>
+
+<xs:group name="IfOrIncludeBlock">
+<xs:choice>
+  <xs:choice minOccurs="0" maxOccurs="unbounded">
+	<xs:element name="If" type="IfBlock" />
+	<xs:element name="Include" type="IncludeBlock" />
+	<xs:element name="Note" type="NoteBlock" />
+  </xs:choice>
+</xs:choice>
+</xs:group>
+
+<!-- Economics -->
+
+<xs:complexType name="EconomicsBlock">
+                  <xs:sequence>
+                    <xs:element name="Commodity" maxOccurs="unbounded" minOccurs="0">
+                      <xs:complexType>
+                        <xs:simpleContent>
+                          <xs:extension base="xs:string">
+                            <xs:attribute type="xs:string" name="name" use="required"/>
+                            <xs:attribute type="xs:string" name="price" use="required"/>
+                          </xs:extension>
+                        </xs:simpleContent>
+                      </xs:complexType>
+                    </xs:element>
+	                <xs:group ref="IfOrIncludeBlock"/> 
+                  </xs:sequence>
+                  <xs:attribute type="xs:string" name="discountRate"/>
+</xs:complexType>
+
+
+<!--========-->
+<!--        -->
+<!-- MINING -->
+<!--        -->
+<!--========-->
+
+<!-- Mining Block -->
+
+<xs:complexType name="MiningBlock">
+    <xs:attribute type="xs:string" name="method"/>
+</xs:complexType>
+
+<!-- Processing Block -->
+
+<xs:complexType name="ProcessingBlock">
+    <xs:sequence>
+      <xs:element name="SecondarySystem" type="SecondarySystemBlock" maxOccurs="1" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute type="xs:string" name="method"/>
+</xs:complexType>
+
+ <xs:complexType name="SecondarySystemBlock">
+    <xs:sequence>
+      <xs:element name="SecondarySystem" type="SecondarySystemBlock" maxOccurs="1" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute type="xs:string" name="method"/>
+    <xs:attribute type="xs:string" name="processingLoss"/>
+    <xs:attribute type="xs:string" name="refiningTake"/>
+    <xs:attribute type="xs:string" name="metals"/>
+</xs:complexType>
+
+<!--==========-->
+<!--          -->
+<!-- HYDROGEN -->
+<!--          -->
+<!--==========-->
+
+<!-- Power Plant Block-->
+
+<xs:complexType name="PowerPlantBlock">
+	<xs:attribute type="xs:string" name="operatingLife" use="optional"/>
+	<xs:attribute type="xs:float" name="capacityFactor" use="optional"/>
+	<xs:attribute type="xs:string" name="type" use="required"/>
+</xs:complexType>
+
+
+<!-- Hydrogen Plant Block-->
+
+<xs:complexType name="HydrogenPlantBlock">
+	<xs:attribute type="xs:string" name="capacity" use="required"/>
+	<xs:attribute type="xs:string" name="type" use="required"/>
+	<xs:attribute type="xs:string" name="waterH2Ratio" use="optional"/>
+	<xs:attribute type="xs:float" name="energyEfficiency" use="optional"/>
+</xs:complexType>
+
+
+<!-- Main Block -->
+  <xs:element name="Problem">
+
+    <xs:complexType>
+      <xs:sequence>
+      
+        <xs:element name="Parameters" type="ParametersBlock" maxOccurs="1" minOccurs="0"/>
+      
+        <xs:element name="MineData" maxOccurs="1" minOccurs="0">
+          <xs:complexType>
+            <xs:sequence>
+            
+              <xs:element name="Location">
+                <xs:complexType>
+                  <xs:simpleContent>
+                    <xs:extension base="xs:string">
+                      <xs:attribute type="xs:float" name="lat"/>
+                      <xs:attribute type="xs:float" name="long"/>
+                    </xs:extension>
+                  </xs:simpleContent>
+                </xs:complexType>
+              </xs:element>
+              
+              <xs:element name="Orebody" type="OrebodyBlock" maxOccurs="unbounded" minOccurs="0"/>
+              
+              <xs:element name="OrebodyList" maxOccurs="unbounded" minOccurs="0">
+                <xs:complexType>
+                  <xs:sequence>
+                   <xs:element name="Orebody" type="OrebodyBlock" maxOccurs="unbounded" minOccurs="1"/>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              
+              <xs:element name="Economics" type="EconomicsBlock" maxOccurs="1" minOccurs="0"/>
+              
+              <xs:element name="Processing" type="ProcessingBlock" maxOccurs="1" minOccurs="0"/>
+              
+              <xs:element name="Mining" type="MiningBlock" maxOccurs="1" minOccurs="0"/>
+              
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        
+        
+        <xs:element name="HydrogenData" maxOccurs="1" minOccurs="0">
+          <xs:complexType>
+            <xs:sequence>
+            
+              <xs:element name="Location">
+                <xs:complexType>
+                  <xs:simpleContent>
+                    <xs:extension base="xs:string">
+                      <xs:attribute type="xs:float" name="lat"/>
+                      <xs:attribute type="xs:float" name="long"/>
+                    </xs:extension>
+                  </xs:simpleContent>
+                </xs:complexType>
+              </xs:element>
+              
+              <xs:element name="PowerPlant" type="PowerPlantBlock" maxOccurs="1" minOccurs="0"/>
+              <xs:element name="HydrogenPlant" type="HydrogenPlantBlock" maxOccurs="1" minOccurs="0"/>
+              
+              <xs:element name="Economics" type="EconomicsBlock" maxOccurs="1" minOccurs="0"/>
+              
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        
+        
+        <xs:element name="Functions" maxOccurs="1" minOccurs="0">
+          <xs:complexType>
+            <xs:sequence>
+	          <!--
+	          !! Fixme Add functions !!
+              -->
+	          <xs:group ref="IfOrIncludeBlock"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        
+        <xs:element name="Actions" maxOccurs="1" minOccurs="0">
+          <xs:complexType>
+            <xs:choice maxOccurs="unbounded" minOccurs="0">
+            
+              <xs:element name="Print">
+                <xs:complexType>
+                  <xs:simpleContent>
+                    <xs:extension base="xs:string">
+                      <xs:attribute type="xs:string" name="msg" use="optional"/>
+                    </xs:extension>
+                  </xs:simpleContent>
+                </xs:complexType>
+              </xs:element>
+              
+              <xs:element name="RunSiteEvaluation">
+                <xs:complexType>
+                  <xs:simpleContent>
+                    <xs:extension base="xs:string">
+                      <xs:attribute type="xs:string" name="type" use="optional"/>
+                    </xs:extension>
+                  </xs:simpleContent>
+                </xs:complexType>
+              </xs:element>
+              
+              <xs:element name="RunRegionalCalculation">
+                <xs:complexType>
+                  <xs:simpleContent>
+                    <xs:extension base="xs:string">
+                      <xs:attribute type="xs:string" name="type" use="optional"/>
+                    </xs:extension>
+                  </xs:simpleContent>
+                </xs:complexType>
+              </xs:element>
+              
+              <xs:element name="RunRegionalSensitivity">
+                <xs:complexType>
+                  <xs:simpleContent>
+                    <xs:extension base="xs:string">
+                      <xs:attribute type="xs:string" name="type" use="optional"/>
+                      <xs:attribute type="xs:string" name="parameter"/>
+                      <xs:attribute type="xs:string" name="min"/>
+                      <xs:attribute type="xs:string" name="max"/>
+                    </xs:extension>
+                  </xs:simpleContent>
+                </xs:complexType>
+              </xs:element>
+              
+              
+              <xs:element name="CompareSensitivities">
+                <xs:complexType>
+                  <xs:simpleContent>
+                    <xs:extension base="xs:string">
+                      <xs:attribute type="xs:string" name="type" use="optional"/>
+                      <xs:attribute type="xs:string" name="parameters"/>
+                      <xs:attribute type="xs:string" name="minima"/>
+                      <xs:attribute type="xs:string" name="maxima"/>
+                    </xs:extension>
+                  </xs:simpleContent>
+                </xs:complexType>
+              </xs:element>
+              
+              <xs:element name="SelectOrebody">
+                <xs:complexType>
+                  <xs:simpleContent>
+                    <xs:extension base="xs:string">
+                      <xs:attribute type="xs:string" name="name" use="optional"/>
+                    </xs:extension>
+                  </xs:simpleContent>
+                </xs:complexType>
+              </xs:element>
+              
+              <xs:element name="SaveXML">
+                <xs:complexType>
+                  <xs:simpleContent>
+                    <xs:extension base="xs:string">
+                      <xs:attribute type="xs:string" name="filename"/>
+                      <xs:attribute type="xs:string" name="save_full_path" use="optional"/>
+                      <xs:attribute type="xs:string" name="record_sha" use="optional"/>
+                    </xs:extension>
+                  </xs:simpleContent>
+                </xs:complexType>
+              </xs:element>
+              
+              <!--Fixme need to make this a true iterator -->
+              <xs:element name="Iterator">
+                <xs:complexType>
+                  <xs:choice maxOccurs="unbounded" minOccurs="0">
+                    <xs:element name="Print">
+                      <xs:complexType>
+                        <xs:simpleContent>
+                          <xs:extension base="xs:string">
+                            <xs:attribute type="xs:string" name="msg"/>
+                          </xs:extension>
+                        </xs:simpleContent>
+                      </xs:complexType>
+                    </xs:element>
+                    
+                    <xs:element name="Eval">
+                      <xs:complexType>
+                        <xs:simpleContent>
+                          <xs:extension base="xs:string">
+                            <xs:attribute type="xs:string" name="script"/>
+                          </xs:extension>
+                        </xs:simpleContent>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:choice>
+                  <xs:attribute type="xs:byte" name="number"/>
+                </xs:complexType>
+              </xs:element>
+              
+              <xs:element type="xs:string" name="Exit"/>
+              
+              
+              <xs:element name="RunHydrogenRegionalCalculation">
+                <xs:complexType>
+                  <xs:simpleContent>
+                    <xs:extension base="xs:string">
+                      <xs:attribute type="xs:string" name="type" use="optional"/>
+                    </xs:extension>
+                  </xs:simpleContent>
+                </xs:complexType>
+              </xs:element>
+              
+	          <xs:group ref="IfOrIncludeBlock"/>
+            </xs:choice>
+          </xs:complexType>
+        </xs:element>
+        
+        
+        
+        <xs:element name="RegionalCalculation"  maxOccurs="1" minOccurs="0">
+          <xs:complexType>
+            <xs:simpleContent>
+              <xs:extension base="xs:string">
+                <xs:attribute type="xs:byte" name="stride"/>
+                <xs:attribute type="xs:string" name="coverDepth"/>
+                <xs:attribute type="xs:string" name="waterDistance"/>
+                <xs:attribute type="xs:string" name="powerDistance"/>
+                <xs:attribute type="xs:string" name="railDistance"/>
+                <xs:attribute type="xs:string" name="roadDistance"/>
+                <xs:attribute type="xs:string" name="railTransportationDistance"/>
+                <xs:attribute type="xs:string" name="roadTransportationDistance"/>
+                <xs:attribute type="xs:string" name="states"/>
+                <xs:attribute type="xs:string" name="pvCapacityFactor"/>
+                <xs:attribute type="xs:string" name="cspCapacityFactor"/>
+                <xs:attribute type="xs:string" name="windCapacityFactor"/>
+                <xs:attribute type="xs:string" name="gasDistance"/>
+                <xs:attribute type="xs:string" name="co2Distance"/>
+                <xs:attribute type="xs:string" name="hydrogenPipelineDistance"/>
+                <xs:attribute type="xs:string" name="steamMethaneCapacityFactor"/>
+                <xs:attribute type="xs:string" name="blackCoalCapacityFactor"/>
+                <xs:attribute type="xs:string" name="brownCoalCapacityFactor"/>
+                <xs:attribute type="xs:string" name="blackCoalTransportationDistance"/>
+                <xs:attribute type="xs:string" name="brownCoalTransportationDistance"/>
+              </xs:extension>
+            </xs:simpleContent>
+          </xs:complexType>
+        </xs:element>
+        
+        
+        <xs:element name="Output"  maxOccurs="1" minOccurs="0">
+          <xs:complexType>
+            <xs:simpleContent>
+              <xs:extension base="xs:string">
+                <xs:attribute type="xs:string" name="prefix"/>
+                <xs:attribute type="xs:string" name="type"/>
+              </xs:extension>
+            </xs:simpleContent>
+          </xs:complexType>
+        </xs:element>
+        
+	    <xs:group ref="IfOrIncludeBlock"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
+

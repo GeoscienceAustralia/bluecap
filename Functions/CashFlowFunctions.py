@@ -1,5 +1,5 @@
 """
-Copyright (C) 2019, Monash University, Geoscience Australia
+Copyright (C) 2019-2021, Monash University, Geoscience Australia
 Copyright (C) 2018, Stuart Walsh 
 
 Bluecap is released under the Apache License, Version 2.0 (the "License");

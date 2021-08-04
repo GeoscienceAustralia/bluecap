@@ -1,5 +1,5 @@
 """
-Copyright (C) 2019, Monash University, Geoscience Australia
+Copyright (C) 2019-2021, Monash University, Geoscience Australia
 Copyright (C) 2018, Stuart Walsh 
 
 Bluecap is released under the Apache License, Version 2.0 (the "License");
@@ -25,12 +25,23 @@ CRED = '\033[91m'
 CEND = '\033[0m'
    
 def Fixme(msg):
-   print "FixMe- ", inspect.stack()[1][3],":", msg
+   print("FixMe - " + inspect.stack()[1][3]+": "+ msg)
    
 def Todo(msg):
-   print CRED, "Todo- ", CEND, inspect.stack()[1][3],":", msg
+   print(CRED + "Todo - " + CEND+ inspect.stack()[1][3] +": "+ msg)
    
-      
-def BluecapError(msg):
-   print "Error - ", inspect.stack()[1][3],":", msg
-   exit()
+def Warning(msg):
+   """ Prints a warning - eg Warning("Use of this functionality is depreciated and may become inoperable.") """
+   print(CRED + "Warning - " + CEND + inspect.stack()[1][3] +": "+ msg) 
+
+
+
+class BluecapError(Exception):
+   """ Raises an error.
+   
+   Usage:
+     raise BluecapError("It has all gone horribly wrong!")
+   
+   """
+   def __init__(self,msg):
+     print(CRED + "Bluecap Error - " + inspect.stack()[1][3]  + ": " + CEND + msg)  

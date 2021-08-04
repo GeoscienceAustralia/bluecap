@@ -1,5 +1,5 @@
 """
-Copyright (C) 2019, Monash University, Geoscience Australia
+Copyright (C) 2019-2021, Monash University, Geoscience Australia
 Copyright (C) 2018, Stuart Walsh 
 
 Bluecap is released under the Apache License, Version 2.0 (the "License");
@@ -23,11 +23,11 @@ import subprocess
 import os
 
 def GetGitSha():
+   """Returns Git Sha from current commit for version tracking."""
    fileDir = os.path.dirname(os.path.abspath(__file__))
    
    if(os.path.exists(fileDir+"/../../.git")):
      cmd = "cd " +fileDir + "; git rev-parse --short HEAD"
-     #print cmd
      returned_value = subprocess.check_output(cmd,shell="True")
      returned_value = returned_value.strip(' \n\t')
    else:

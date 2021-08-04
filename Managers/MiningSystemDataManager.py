@@ -1,5 +1,5 @@
 """
-Copyright (C) 2019, Monash University, Geoscience Australia
+Copyright (C) 2019-2021, Monash University, Geoscience Australia
 Copyright (C) 2018, Stuart Walsh 
 
 Bluecap is released under the Apache License, Version 2.0 (the "License");
@@ -23,11 +23,10 @@ import numpy as np
 
 from scipy.optimize import brentq
 
-# Common
-from Common.Common import Todo
 
 # IO
 from IO.XML import HasChild,GetChild,AddChild
+from IO.XML import HasAttribute
 from IO.XML import GetAttributeString,GetAttributeValue, SetAttributeString
 
 
@@ -43,11 +42,12 @@ class MiningSystemDataManager():
         This class holds information representing the mining system. 
         Note it is a subset of the Mine data manager, which holds information about the mining operation, processing/milling and infrastructure.
     """
-    def __init__(self):
+    def __init__(self,orebodyName=""):
       """
       Create an empty mining system data manager and default variables. 
       """
-      self.miningMethod = ""
+      
+      self.orebodyName = orebodyName
       self.mineLife = 0
       self.mineCapacity = 0.0
       self.mineOreProductionCapacity = 0.0
@@ -65,26 +65,56 @@ class MiningSystemDataManager():
       self.miningMethod = "OC"
       
       theUnitManager =  UnitManager()
+      
       self.ugHaulCostPerDepth = theUnitManager.ConvertToBaseUnits("0.0073 AUD/tonne/m")
-
+      
+      # proving costs
+      self.doProvingCostCalculation = False
+      self.boreholeDensity = 1.0/theUnitManager.ConvertToBaseUnits("50 m")**2 # 50m x 50m grid
+      self.drillingCostPerMeter = theUnitManager.ConvertToBaseUnits("100 AUD/m")
+      
+      
     def ParseXMLNode(self, miningSystemNode):
       """
       Generate mining system data from xml tree node.
        - Note this may not be needed in many cases as the mining system is derived from the orebody shape  
       """
-    
+      
+      theUnitManager =  UnitManager()
+      
       if(HasAttribute(miningSystemNode,"alpha")):  
         self.alpha = GetAttributeValue(miningSystemNode,"alpha")
+      
+      if(HasAttribute(miningSystemNode,"orebody")):  
+        self.orebodyName = GetAttributeString(miningSystemNode,"orebody")
+      
+      # for K2SO4 (brine mining) only - bit ugly - might be able to use orebody instead
+      if(HasAttribute(miningSystemNode,"method")):  
+        self.miningMethod = GetAttributeString(miningSystemNode,"method")
+        
+      # for proving well costs
+      if(HasAttribute(miningSystemNode,"boreholeSpacing")):  
+         spacing = theUnitManager.ConvertToBaseUnits(GetAttributeString(miningSystemNode,"boreholeSpacing"))
+         self.boreholeDensity = 1.0/(spacing**2)
+         
+      if(HasAttribute(miningSystemNode,"drillingCost")):  
+         self.drillingCostPerMeter = theUnitManager.ConvertToBaseUnits(GetAttributeString(miningSystemNode,"drillingCost"))
+      
+      if(HasAttribute(miningSystemNode,"includeProvingCosts")):  
+        self.doProvingCostCalculation = GetAttributeValue(miningSystemNode,"includeProvingCosts")
       
       return miningSystemNode
     
     
       
     def UpdateOpenPitDepth(self,w,l,d,excavatedVol,alpha):
+      """Calculate the new depth of the open pit once a given volume of material is excavated."""
       cotAlpha = 1.0/np.tan(alpha)
       func = lambda newD : w*l*(newD-d) + (w+l)*cotAlpha * (newD **2 - d**2) + np.pi/3 * cotAlpha**2 *(newD**3 - d**3) - excavatedVol
   
       dmax = d+excavatedVol/float(w*l)   # might be able to improve bound by using 2nd order terms
+  
+      #print func(d), func(dmax), cotAlpha
   
       theNewD = brentq(func,d,dmax)  # using current d as lower bound
   
@@ -92,7 +122,8 @@ class MiningSystemDataManager():
 
 
     def UpdateSlopedOpenPitDepth(self,w,l,d,excavatedVol,alpha,beta):
-      cotAlpha = 1.0/np.tan(alpha)  
+      """Calculate the new depth of a sloped open pit once a given volume of material is excavated."""
+      cotAlpha = 1.0/np.tan(alpha)  # just store grade instead?
       cotBeta = 1.0/np.tan(beta)
       func = lambda newD : w*l*newD - (w-(cotBeta-cotAlpha)*(newD-d))*l*d\
                          + (w+0.5*l)*cotAlpha * newD **2 - (0.5*l+w-(cotBeta-cotAlpha)*(newD-d))*cotAlpha*d**2 \
@@ -100,17 +131,21 @@ class MiningSystemDataManager():
   
       dmax = d+excavatedVol/float(w*l)   # might be able to improve by using 2nd order
   
+      #print func(d), func(dmax), cotAlpha
+  
       theNewD = brentq(func,d,dmax)
   
       return theNewD
   
 
     def UpdateOpenPitDepthAndOreFraction(self,w,l,d,excavatedVol,alpha):
+      """Calculate the new depth and fraction of ore excavated from an open pit."""
       dd = self.UpdateOpenPitDepth(w,l,d,excavatedVol,alpha)
       oreFraction =  (dd-d)*w*l/excavatedVol
       return dd,oreFraction
   
     def UpdateSlopedOpenPitDepthAndOreFraction(self,w,l,d,excavatedVol,alpha,beta):
+      """Calculate the new depth and fraction of ore excavated from a sloped open pit."""
       dd = self.UpdateSlopedOpenPitDepth(w,l,d,excavatedVol,alpha,beta)
       oreFraction =  (dd-d)*w*l/excavatedVol
       return dd,oreFraction   
@@ -185,25 +220,16 @@ class MiningSystemDataManager():
       return theSwitchingDepth
   
     
-    
-    
-    ###
-    
-    ###
-    
-    
-    
      
     def DetermineMiningSystem(self, problemManager, mineManager):
       """
       Use available data to determine the most likely mining method/capacity/opex etc.
       """
     
-      
-      flatPlunge = 20 * np.pi/180.
-      steepPlunge = 55 * np.pi/180.
-      
       theUnitManager =  UnitManager()
+      flatPlunge = theUnitManager.ConvertToBaseUnits("20 degrees")
+      steepPlunge = theUnitManager.ConvertToBaseUnits("55 degrees")
+            
       narrowWidth = theUnitManager.ConvertToBaseUnits("10m")
       thickWidth = theUnitManager.ConvertToBaseUnits("30m")
       
@@ -245,6 +271,58 @@ class MiningSystemDataManager():
       
       return self
 
+    def DetermineDepositMineType(self, problemManager, mineManager):
+      """
+      Use available data to determine the most likely mining method/capacity/opex etc.
+      """
+    
+      flatPlunge = 20 * np.pi/180.
+      steepPlunge = 55 * np.pi/180.
+      
+      theUnitManager =  UnitManager()
+      narrowWidth = theUnitManager.ConvertToBaseUnits("10m")
+      thickWidth = theUnitManager.ConvertToBaseUnits("30m")
+      
+      # Thick > 30 m
+      # Intermediate 10-30m
+      # Narrow < 10 m
+      
+      # Plunge
+      # Flat < 20 degrees
+      # Intermediate  20-55 degrees
+      # Steep > 55 degrees  
+      
+      doUnderground = self.miningMethod == "UG"
+      
+      if (doUnderground):
+          if (mineManager.theOreBody.dip < flatPlunge ):  # see selection process for hard rock mining by Carter
+            self.miningMethod = "UG_RP"
+            # Room and pilar
+            # "Typically flat and tabular"
+          elif (mineManager.theOreBody.width < narrowWidth ):
+            # Cut and fill
+            self.miningMethod = "UG_CF"
+      
+          elif (mineManager.theOreBody.dip > steepPlunge and mineManager.theOreBody.width > thickWidth and mineManager.theOreBody.height > mineManager.theOreBody.width ):
+            # Block cave
+            self.miningMethod = "UG_BC"
+          else:
+            # Stoping
+            self.miningMethod = "UG_ST"
+      
+      return self
+      
+    def DetermineMineLifeProductionAndCosts(self, problemManager, mineManager):
+      """Determine the mining life and method, the associated production each year and cost of excavation."""
+      
+      self.CalculateMineLife(mineManager)
+      self.CalculateOreMined(mineManager)
+      
+      self.CalculateMiningCapex(mineManager)
+      self.CalculateMiningOpex(mineManager)
+      
+      return self
+    
       
     def CalculateMineCapacity(self,problemManager, mineManager):
       """
@@ -255,6 +333,8 @@ class MiningSystemDataManager():
       orebodyMass =  mineManager.theOreBody.CalculateDepositMass()*theUnitManager.ConvertTo("tonne")
       
       
+      #self.mineCapacity =  problemManager.theFunctionManager.Evaluate("TaylorsRule_" + self.miningMethod, [orebodyMass])
+      
       theFunctionManager =  FunctionManager()
       
       if(self.miningMethod == "OCUG"):
@@ -262,20 +342,54 @@ class MiningSystemDataManager():
       else:
         taylorsRuleFunc = theFunctionManager.GetFunction("TaylorsRule_" + self.miningMethod)
       daysPerYear = 350 
-      # operating days per year - assuming 350 days
+      #Todo("Check operating days per year - assuming 350 days")
       self.mineCapacity = daysPerYear * taylorsRuleFunc.f( [orebodyMass] )* theUnitManager.ConvertToBaseUnits("tonne")
       self.mineOreProductionCapacity = self.mineCapacity
       
-      print "Mine ore capacity from Taylor's rule in Mt/year", self.mineCapacity* theUnitManager.ConvertTo("1e6 tonne")
-   
+      #print "Mine ore capacity from Taylor's rule in Mt/year", self.mineCapacity* theUnitManager.ConvertTo("1e6 tonne")
+      #print "Mine ore capacity from Taylor's rule in Mt/day", self.mineCapacity* theUnitManager.ConvertTo("1e6 tonne")/350.
       
       return self.mineCapacity
+ 
+      
+    def CalculateMineCapacityFromMass(self,orebodyMass):
+      """
+      Determine the maximum annual extraction for the mine using Taylor's rule from orebodyMass given in tonnes. 
+      """
+      theUnitManager =  UnitManager()
+      
+      #orebodyMass =  mineManager.theOreBody.CalculateDepositMass()*theUnitManager.ConvertTo("tonne")
+      
+      
+      theFunctionManager =  FunctionManager()
+      
+      if(self.miningMethod == "OCUG"):
+        taylorsRuleFunc = theFunctionManager.GetFunction("TaylorsRule_" + self.miningMethod[:2])
+      else:
+        taylorsRuleFunc = theFunctionManager.GetFunction("TaylorsRule_" + self.miningMethod)
+      daysPerYear = 350 
+      #Todo("Check operating days per year - assuming 350 days")
+      mineProductionCapacity = daysPerYear * taylorsRuleFunc.f( [orebodyMass] )* theUnitManager.ConvertToBaseUnits("tonne")
+      
+      #self.mineOreProductionCapacity = self.mineCapacity
+      #print "Mine ore capacity from Taylor's rule in Mt/year", self.mineCapacity* theUnitManager.ConvertTo("1e6 tonne")
+      #print "Mine ore capacity from Taylor's rule in Mt/day", self.mineCapacity* theUnitManager.ConvertTo("1e6 tonne")/350.
+      
+      return mineProductionCapacity
       
     
     def CalculateMineLife(self, mineManager):
       """
       Determine the life of the mine
       """
+      # NB - Taylor's rule may need to be tweaked for open cut 
+      #    - original tracks amount of ore produced (based on processing cost)
+      #    - therefore assume that mine material moved is sufficient to meet this on average
+      
+      # Current calculation - calculate break even SR based on Open cut capacity
+      #                     - determine depth where break even SR is reached
+      #                     - mine to depth at open cut capacity based on average SR to reach that depth
+      #                     - continue ug mining at processing capacity
       
       self.orebodyMass =  mineManager.theOreBody.CalculateDepositMass()
       
@@ -286,7 +400,7 @@ class MiningSystemDataManager():
       theUnitManager =  UnitManager()
       
       orebodyMass =  mineManager.theOreBody.CalculateDepositMass()*theUnitManager.ConvertTo("tonne")
-      print "orebodyMass in 1e6 tonne", orebodyMass/1e6
+      print("orebodyMass in 1e6 tonne", orebodyMass/1e6)
       
       
       # undergound
@@ -305,6 +419,10 @@ class MiningSystemDataManager():
       overburdenDensity = mineManager.theOreBody.specificDensity*1000*theUnitManager.ConvertToBaseUnits("kg/m^3")
       self.actualMineStartupTime = (overburdenDensity*rampVolume)/(self.mineCapacity+1e-64)
       
+      
+      if(self.miningMethod == "K2SO4"):
+        self.actualMineStartupTime = 1  # assume 1 year startup for brine
+      
       self.mineStartupTime = np.max([int( np.ceil(self.actualMineStartupTime) ),1])  # round up to years
     
       
@@ -316,8 +434,8 @@ class MiningSystemDataManager():
       self.depths = np.zeros(self.mineLife)
       
       
-      print "mineLife", self.mineLife
-      print "mineStartupTime", self.mineStartupTime
+      #print "mineLife", self.mineLife
+      #print "mineStartupTime", self.mineStartupTime
       
       return self.mineLife
       
@@ -338,7 +456,7 @@ class MiningSystemDataManager():
       self.materialMined[self.mineStartupTime:-1] = self.mineCapacity   # constant in all years but last
       self.materialMined[-1] =  self.orebodyMass - self.mineCapacity*(self.mineLife-self.mineStartupTime-1)  # remainder in last year
   
-      # assuming all material mined is ore in underground mines
+      # assuming all material mined is ~ore in underground mines
       
       if(self.miningMethod[:2] == "OC" ):  # open cut
     
@@ -368,9 +486,9 @@ class MiningSystemDataManager():
         switchingDepth = self.FindOpUgSwitchingDepth(oreProductionRate, w,l,minD,maxD,alpha,ocMiningOpexFunc,ugOpexPerTonne,ugOpexPerTonneMDepth )+1e-3 # add a mm to prevent roundoff error
         
         
-        print "OC/UG Switching Depth",switchingDepth
-        print "minD",minD
-        print "maxD",maxD
+        #print "OC/UG Switching Depth",switchingDepth
+        #print "minD",minD
+        #print "maxD",maxD
         
         if (switchingDepth > minD):
           
@@ -418,18 +536,18 @@ class MiningSystemDataManager():
             
             self.miningMethod = "OCUG"
             self.ugMaterialMined = np.zeros(self.mineLife)
-            self.ugOpexPerTonne = ugOpexPerTonne   
+            self.ugOpexPerTonne = ugOpexPerTonne   # ugly - should store both above and below for all mining methods
             
             switchingTime = ( (switchingDepth-minD)/mineManager.theOreBody.height)*mineManager.theOreBody.orebodyMass/oreProductionRate  
             switchingTime += self.mineStartupTime
             theSwitchingYear = int( np.floor(switchingTime) )
           
-            print "Op/UG Switching Time,year",switchingTime,theSwitchingYear
+            #print "Op/UG Switching Time,year",switchingTime,theSwitchingYear
           
-            print "OC opex",ocMiningOpexFunc.f([self.mineCapacity*theUnitManager.ConvertTo("1e6 tonne")])
-            print "UG opex",ugOpexPerTonne
-            print "OC capacity (Mt)",self.mineCapacity*theUnitManager.ConvertTo("1e6 tonne")
-            print "UG capacity (Mt)",self.mineOreProductionCapacity*theUnitManager.ConvertTo("1e6 tonne")
+            #print "OC opex",ocMiningOpexFunc.f([self.mineCapacity*theUnitManager.ConvertTo("1e6 tonne")])
+            #print "UG opex",ugOpexPerTonne
+            #print "OC capacity (Mt)",self.mineCapacity*theUnitManager.ConvertTo("1e6 tonne")
+            #print "UG capacity (Mt)",self.mineOreProductionCapacity*theUnitManager.ConvertTo("1e6 tonne")
             
             firstUGYear = theSwitchingYear+1
             if(firstUGYear < self.mineLife):
@@ -457,22 +575,24 @@ class MiningSystemDataManager():
             
             self.ugMaterialMined[theSwitchingYear] = self.mineOreProductionCapacity*(1-switchingTime+theSwitchingYear)   # ug component
             self.oreMined[theSwitchingYear] +=  self.ugMaterialMined[theSwitchingYear]  # ug component
-            self.depths[theSwitchingYear] = switchingDepth 
+            self.depths[theSwitchingYear] = switchingDepth  # nqr - should be depth at end of year.
             self.depths[-1] = maxD
           # account for 
           
         else:
-          print "Open cut mining is less economic than underground mining"
+          #print "Open cut mining is less economic than underground mining"
           self.materialMined[:] = 0.0   # ug is better at all depths
           self.oreMined[:] = 0.0
         
       else:
-        # assuming all material mined is ore in underground mines
+        # assuming all material mined is ~ore in underground mines
         
         minD = mineManager.theOreBody.cover
         maxD = mineManager.theOreBody.cover + mineManager.theOreBody.height
         
         self.oreMined[self.mineStartupTime:] = self.materialMined[self.mineStartupTime:]
+        #print self.mineStartupTime-1, self.mineLife+1-self.mineStartupTime,self.mineLife
+        #print len(self.depths[self.mineStartupTime-1:]),len(self.depths)
         self.depths[self.mineStartupTime-1:] = np.linspace(minD,maxD,self.mineLife+1-self.mineStartupTime )
     
       self.wasteMined =  self.materialMined - self.oreMined
@@ -480,6 +600,7 @@ class MiningSystemDataManager():
       return self.oreMined
       
     def CalculateMiningCapex(self, mineManager):
+      """Calculating startup costs for the mining operation."""
 
       self.miningCapex = np.zeros(self.mineLife)
       
@@ -494,26 +615,30 @@ class MiningSystemDataManager():
       
       self.miningCapex[0] =  miningCapexFunc.f( [self.mineCapacity*theUnitManager.ConvertTo("1e6 tonne")] )
       
+      if(self.doProvingCostCalculation):
+        self.miningCapex[0] += self.CalculateProvingCosts(mineManager)
       
       return self.miningCapex
       
     def CalculateMiningOpex(self, mineManager):
-      #  no distinction between opex and sustaining capital (adjust tax calculation)
+      """Calculating ongoing costs for mining operation. Note that all costs before production, and later a proportion of these costs is assumed to be capitalized (sustaining capital)."""
       
       theFunctionManager =  FunctionManager()
       theUnitManager = UnitManager()
       
-      
-      miningOpexFunc = theFunctionManager.GetFunction("MiningOpex_" + self.miningMethod[:2])  #  NB. just opencut or underground
+      if(self.miningMethod == "K2SO4"):
+        # need to distinguish brine mining from other forms. 
+        miningOpexFunc = theFunctionManager.GetFunction("MiningOpex_" + self.miningMethod)
+      else:
+        miningOpexFunc = theFunctionManager.GetFunction("MiningOpex_" + self.miningMethod[:2])  #  NB. just opencut or underground
       opexPerTonne =  miningOpexFunc.f( [self.mineCapacity *theUnitManager.ConvertTo("1e6 tonne")] )
       ugOpexPerTonnePerMDepth = self.ugHaulCostPerDepth*theUnitManager.ConvertTo("AUD/tonne/m")
       
       
-      print "Mining method: ", self.miningMethod
-      print "Mining capacity (Mt material)", self.mineCapacity  *  theUnitManager.ConvertTo("1e6 tonne")
-      print "Mining Opex Per Tonne ", opexPerTonne
+      #print "Mining method: ", self.miningMethod
+      #print "Mining capacity (Mt material)", self.mineCapacity  *  theUnitManager.ConvertTo("1e6 tonne")
+      #print "Mining Opex Per Tonne ", opexPerTonne
       
-
       if(self.miningMethod == "OCUG"):
       
         #print "self.ugOpexPerTonne",self.ugOpexPerTonne
@@ -530,14 +655,25 @@ class MiningSystemDataManager():
            self.miningOpex *= opexPerTonne
            
       # pre-production expenses are capitalized
-      self.miningCapex[:self.mineStartupTime] = self.miningOpex[:self.mineStartupTime] 
+      self.miningCapex[:self.mineStartupTime] += self.miningOpex[:self.mineStartupTime] 
       self.miningOpex[:self.mineStartupTime] = 0.0
 
       return self.miningOpex
+      
+    def CalculateProvingCosts(self,mineManager):
+      """Estimate drilling costs for proving orebody of a given size, based on borehole density and total length drilled."""
+      w = mineManager.theOreBody.width 
+      l = mineManager.theOreBody.length
+      d = mineManager.theOreBody.cover
+      t = mineManager.theOreBody.height
+      theta = mineManager.theOreBody.dip
+      provingCosts = l*w*(d+t+0.5*l*np.sin(theta)) * self.boreholeDensity * self.drillingCostPerMeter
+      
+      return provingCosts
 
     def WriteXMLNode(self, node):
       """
-      Write mining system data to xml node
+      Write mining system data to xml node.
       """
       # Mine data
       SetAttributeString(node,"method",self.miningMethod)

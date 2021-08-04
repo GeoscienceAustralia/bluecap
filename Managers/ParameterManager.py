@@ -1,5 +1,5 @@
 """
-Copyright (C) 2019, Monash University, Geoscience Australia
+Copyright (C) 2019-2021, Monash University, Geoscience Australia
 Copyright (C) 2018, Stuart Walsh 
 
 Bluecap is released under the Apache License, Version 2.0 (the "License");
@@ -61,7 +61,7 @@ class ParameterManager(object):
       def WriteXMLNode(self, node): - must be done outside to avoid recursion
       
         # parameters 
-        for name,paramVal in self.params.iteritems():
+        for name,paramVal in self.params.items():
           paramNode = AddChild(node,"parameter")
           SetAttributeString(paramNode,"name",name)
           SetAttributeString(paramNode,"value",paramVal)

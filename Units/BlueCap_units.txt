@@ -60,7 +60,7 @@ usdollar = [] = USD
 
 # Angle
 turn = 2 * pi * radian = revolution = cycle = circle
-degree = pi / 180 * radian = deg = arcdeg = arcdegree = angular_degree
+degree = pi / 180 * radian = degrees = deg = arcdeg = arcdegree = angular_degree
 arcminute = arcdeg / 60 = arcmin = arc_minute = angular_minute
 arcsecond = arcmin / 60 =  arcsec = arc_second = angular_second
 steradian = radian ** 2 = sr

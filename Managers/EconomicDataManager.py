@@ -1,5 +1,5 @@
 """
-Copyright (C) 2019, Monash University, Geoscience Australia
+Copyright (C) 2019-2021, Monash University, Geoscience Australia
 Copyright (C) 2018, Stuart Walsh 
 
 Bluecap is released under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,6 @@ Please refer to individual components for more details.
 import numpy as np
 
 
-# Common
-from Common.Common import Todo
 
 # IO
 from IO.XML import HasChild,GetChild,GetChildren,AddChild
@@ -43,7 +41,9 @@ class EconomicDataManager():
       
       self.GandAOpex = np.array([0.0])
       self.GandAFraction = 0.14   # measures proportion of expenses dedicated to G&A
-      self.metalPrices = {}
+      self.commodityPrices = {}      # commodity prices used in calculation
+      self.referenceCommodityPrices = {} # reference prices 
+      self.commodityPriceSigmas = {}  # std deviation in the log ratios of metal prices
       
       # NCF
       self.revenue = np.array([0.0])
@@ -74,16 +74,20 @@ class EconomicDataManager():
 
     def ParseXMLNode(self, economicDataNode):
       """
-      Generate Economic Data Manager data from xml tree node. 
+      Generate the Economic Data Manager data from xml tree node. 
       """
       
       self.discountRate = GetAttributeValue(economicDataNode,"discountRate")
       
       for child in GetChildren(economicDataNode,"Commodity"):
-      	name = GetAttributeString(child,"name")
-      	price = GetAttributeValue(child,"price")
-      	self.metalPrices[name] = price
-      	
+        name = GetAttributeString(child,"name")
+        price = GetAttributeValue(child,"price")
+        self.commodityPrices[name] = price
+        self.referenceCommodityPrices[name] = price
+        self.commodityPriceSigmas[name] = 0.0
+        if(HasAttribute(child,"sigma")):
+          self.commodityPriceSigmas[name] = GetAttributeValue(child,"sigma")
+        
       if(HasAttribute(economicDataNode,"GandAFraction")):
         self.GandAFraction = GetAttributeValue(economicDataNode,"GandAFraction")
         
@@ -97,7 +101,7 @@ class EconomicDataManager():
 
     def WriteXMLNode(self, node):
       """
-      Write data to xml node
+      Write the Economic Data Manager data to an xml node
       """
       
       # discount rate
@@ -107,10 +111,12 @@ class EconomicDataManager():
       SetAttributeString(node,"state",self.state)
       
       # price data
-      for name,price in self.metalPrices.iteritems():
+      
+      for name,price in self.referenceCommodityPrices.items():
         commNode = AddChild(node,"Commodity")
         SetAttributeString(commNode,"name",name)
         SetAttributeString(commNode,"price",price)
+        SetAttributeString(commNode,"sigma",self.commodityPriceSigmas[name])
       
       
       # inflation
@@ -123,8 +129,25 @@ class EconomicDataManager():
       return node
     
     def SetState(self, stateStr):
+      """Set the state of the economic data manager."""
       self.state = stateStr
-      
+    
+    def ResetCommodityPrices(self):
+      """Reset commodity prices to their reference values (used in random walk simulations)."""
+      for name,price in self.referenceCommodityPrices.items():
+        self.commodityPrices[name] = price
+    
+    def GenerateRandomWalkCommodityPrices(self,years):
+      """Create a commodity price series for each commodity using a random walk simulator."""
+      for name,price in self.referenceCommodityPrices.items():
+        randomPrices = np.zeros(years)
+        sigma = self.commodityPriceSigmas[name]
+        randomPrices[0] = price
+        for i in range(1,years):
+           ratio = np.exp( sigma * np.random.normal() )
+           randomPrices[i] = randomPrices[i-1]*ratio
+        self.commodityPrices[name] = randomPrices
+    
     def CalculateGandAExpenses(self, problemManager, mineDataManager):
       """
       Calculate the general and administrative expense component of the mine costs 
@@ -133,32 +156,66 @@ class EconomicDataManager():
       self.GandAOpex = mineDataManager.theMiningSystem.miningOpex + mineDataManager.theMiningSystem.miningCapex \
                       + mineDataManager.theProcessingSystem.processingOpex + mineDataManager.theProcessingSystem.processingCapex
       self.GandAOpex *= self.GandAFraction/(1.0 - self.GandAFraction)
+
+    def CalculateGandAExpensesFromManagerList(self, problemManager, managerList):
+      """
+      Calculate the general and administrative expense component of the mine costs 
+      Assumed equal to a fixed percentage of the startup and sustaining costs of each manager in the list.
+      """
+      self.GandAOpex = 0
+      for manager in CalculateGandAExpensesFromManagerList:
+        self.GandAOpex += manager.opex + manager.capex 
+      self.GandAOpex *= self.GandAFraction/(1.0 - self.GandAFraction)
       
     def CalculateRevenue(self,problemManager, mineDataManager):
       """
       Calculate revenue from sale of concentrate 
       """
       pricePerUnitMassOre = 0.0
+      mineYears = len(mineDataManager.theProcessingSystem.oreProcessed)
       
-      for metal,grade in mineDataManager.theOreBody.metalGrades.iteritems():
-         #print metal, grade,  self.metalPrices[metal],grade*self.metalPrices[metal]
-         pricePerUnitMassOre += ( grade/(1.0+ mineDataManager.theMiningSystem.dilution) )*self.metalPrices[metal]
+      processingSystem = mineDataManager.theProcessingSystem
       
-      pricePerUnitMassOre *= (1.0 - mineDataManager.theProcessingSystem.processingLoss)*(1.0 - mineDataManager.theProcessingSystem.refiningTake)
-      #print "pricePerUnitMassOre ", pricePerUnitMassOre
-            
-      self.revenue = mineDataManager.theProcessingSystem.oreProcessed  * pricePerUnitMassOre
-
+      self.revenue = np.zeros(mineYears)
       
+      # loop through each processing system
+      while(processingSystem):
+          #for metal,grade in mineDataManager.theOreBody.metalGrades.items():
+          for metal in processingSystem.concentrateMetals:
+              grade = mineDataManager.theOreBody.metalGrades[metal]
+              prefactor = 1.0
+              if(processingSystem.processingMethod == "Ni" and metal == "Co"):  # cobalt price is halved in ni concentrates
+                prefactor = 0.5 
+              if(processingSystem.processingMethod == "P2O5"):
+                prefactor = 1.0/0.3  # Phosphate rock price is based on 30% P2O5
+              #print metal, grade,  self.commodityPrices[metal],grade*self.commodityPrices[metal]
+              if( np.isscalar( self.commodityPrices[metal] ) ):
+                pricePerUnitMassOre += prefactor*( grade/(1.0+ mineDataManager.theMiningSystem.dilution) )*self.commodityPrices[metal]
+              elif(len( self.commodityPrices[metal] ) >=  mineYears  ):
+                pricePerUnitMassOre += prefactor*( grade/(1.0+ mineDataManager.theMiningSystem.dilution) )*self.commodityPrices[metal][:mineYears]
+              else:
+                pricePerUnitMassOre *= np.ones(mineYears)
+                priceYears = len(self.commodityPrices[metal])
+                pricePerUnitMassOre[:priceYears] += prefactor*( grade/(1.0+ mineDataManager.theMiningSystem.dilution) )*self.commodityPrices[metal]
+                pricePerUnitMassOre[priceYears:] += prefactor*( grade/(1.0+ mineDataManager.theMiningSystem.dilution) )*self.commodityPrices[metal][-1]
+        
+          pricePerUnitMassOre *= (1.0 - processingSystem.processingLoss)*(1.0 - processingSystem.refiningTake)
+          self.revenue += processingSystem.oreProcessed  * pricePerUnitMassOre
+          
+          processingSystem = processingSystem.secondaryProcessingSystem # secondary products
+          
+      #print "revenue", self.revenue
+      #print "pricePerUnitMassOre",pricePerUnitMassOre
+      #print "processingSystem.oreProcessed", processingSystem.oreProcessed
       return self.revenue
      
     def CalculateBreakevenFactor(self,problemManager, mineDataManager,cost): 
-    
+      """Estimate the breakeven factor for all commodities(i.e. the multiplier for all commodity prices to return NPV=0)."""
       pricePerUnitMassOre = 0.0
       
-      for metal,grade in mineDataManager.theOreBody.metalGrades.iteritems():
-         #print metal, grade,  self.metalPrices[metal],grade*self.metalPrices[metal]
-         pricePerUnitMassOre += grade*self.metalPrices[metal]
+      for metal,grade in mineDataManager.theOreBody.metalGrades.items():
+         #print metal, grade,  self.commodityPrices[metal],grade*self.commodityPrices[metal]
+         pricePerUnitMassOre += grade*self.commodityPrices[metal]
       
       pricePerUnitMassOre *= (1.0 - mineDataManager.theProcessingSystem.processingLoss)*(1.0 - mineDataManager.theProcessingSystem.refiningTake)
       #print "pricePerUnitMassOre ", pricePerUnitMassOre
@@ -172,6 +229,10 @@ class EconomicDataManager():
     def CalculateBeforeTaxCashFlow(self, problemManager, mineDataManager):
       """
       Calculate the before-tax net cash flow for the project - in real terms
+      NB - depreciated - will replace with the "CalculateBeforeTaxCashFlowFromManager"
+      below but need to implement start up and sustaining cost calculations in mine manager
+      and test - in the meantime non-mine projects (eg. hydrogen) should  use version below
+      in their own economic data manager
       """
       
       self.CalculateRevenue(problemManager, mineDataManager)
@@ -187,14 +248,17 @@ class EconomicDataManager():
                       + mineDataManager.theProcessingSystem.processingOpex  \
                       + mineDataManager.theInfrastructureManager.infrastructureOpex \
                       + self.GandAOpex
+      
+      if(mineDataManager.theRehabilitationManager):
+        self.netOpex +=  mineDataManager.theRehabilitationManager.rehabilitationCosts
                       
       # add sustaining capital cost contribution to capex
       self.netCapex += self.sustainingCapexFraction*self.netOpex
       
-      # remove from opex
+      # remove sustaining capital cost contribution from opex
       self.netOpex *= 1.0-self.sustainingCapexFraction
       
-      # inflate revenue opex and capex
+      # inflate revenue opex and (sustaining) capex
       inflation =  (1.0+self.inflation)**np.array( range( mineDataManager.theMiningSystem.mineLife ) )
       self.revenue *= inflation
       self.netOpex *= inflation
@@ -202,8 +266,10 @@ class EconomicDataManager():
       
       # before tax net cash flow
       self.btNCF =  self.revenue - self.netOpex - self.netCapex 
-      return self.btNCF    
       
+      
+      return self.btNCF    
+    
                 
     def CalculateTaxes(self, problemManager, mineDataManager):
       """
@@ -226,11 +292,14 @@ class EconomicDataManager():
       for i in range(1, mineDataManager.theMiningSystem.mineLife ): # spread annual depreciation over remaining years
         mineMouthDepreciatedCapex[i] += mineMouthDepreciatedCapex[i-1]
       
-      # Note that the state needs to be set prior to the
+      # Note that the state needs to be set prior to the calculation
       state = self.state
       processedState = self.state
-      commodity = mineDataManager.theOreBody.type[:2]  
-      commodityPrice = self.metalPrices[commodity]
+      commodity = mineDataManager.theOreBody.type[:2]
+      if(commodity == "P2" or commodity =="K2" or commodity == "RE"):
+        commodity = mineDataManager.theOreBody.type
+      
+      commodityPrice = self.commodityPrices[commodity]
       profit = self.revenue - self.netOpex - self.depreciatedCapex
       value = self.revenue
       # https://resourcesandgeoscience.nsw.gov.au/__data/assets/pdf_file/0009/691713/Deductions_NonCoal.pdf
@@ -239,7 +308,10 @@ class EconomicDataManager():
                         - mineDataManager.theInfrastructureManager.infrastructureOpex \
                         - (1.0/3.0)*self.GandAOpex \
                         - mineMouthDepreciatedCapex
-      self.royalties = AustralianRoyalties(state,commodity,profit,value,mineMouthValue,commodityPrice,processedState)
+      if type(commodityPrice) == float:
+        self.royalties = AustralianRoyalties(state,commodity,profit,value,mineMouthValue,commodityPrice,processedState)
+      else:
+        self.royalties = AustralianRoyalties(state,commodity,profit,value,mineMouthValue,commodityPrice[:len(value)],processedState)
       
       ##
     
@@ -265,7 +337,7 @@ class EconomicDataManager():
       
     def CalculateAfterTaxCashFlow(self, problemManager, mineDataManager):
       """
-      Calculate the after-tax net cash flow for the project
+      Calculate the after-tax net cash flow for the project.
       """
       self.atNCF =  self.btNCF - self.taxes - self.royalties
       return self.atNCF  
@@ -284,29 +356,46 @@ class EconomicDataManager():
       return np.sum(ncf/discountFactors)      
       
       
-    
     def CalculateBeforeTaxNPV(self, problemManager, mineDataManager):
       """
-      Calculate the before tax net present value for the project
+      Calculate the before tax net present value for the project.
       """
       self.btNPV  = self.CalculateNPV(self.btNCF)
+      
+      # additional NPC due to rehabilitation bond
+      if(mineDataManager.theRehabilitationManager):
+        self.btNPV -= mineDataManager.theRehabilitationManager.rehabilitationNPC
       
       return self.btNPV 
       
     
       
-    def CalculateAfterTaxNPV(self, problemManager, mineDataManager):
+    def CalculateAfterTaxNPV(self, problemManager, projectManager):
       """
-      Calculate the after tax net present value for the project
+      Calculate the after tax net present value for the project.
       """
       self.atNPV  = self.CalculateNPV(self.atNCF)
       
+      # additional NPC due to rehabilitation bond
+      if(projectManager.theRehabilitationManager):
+        self.atNPV -= projectManager.theRehabilitationManager.rehabilitationNPC
+      
       return self.atNPV 
      
+ 
+    def CalculateEquivalentAnnuity(self,npv,numYears):
+      """
+      Calculate the annuity that would deliver the same NPV .
+      """
+      #years = np.array(range(numYears)) + 1.0 # NB end of year discounting (and no year 0)
+      denom = (1-1./(1+self.discountRate)**numYears)*(1+ self.discountRate)/self.discountRate
+      ea = npv/(denom+1e-64)
+      return ea   
+ 
      
     def EstimateDirectEmployment(self, totalStartupCosts):
       """
-      Estimate employment for the project
+      Estimate employment for the project.
       """
       self.employment  = 10.24 * (totalStartupCosts/1e6)**0.53  
       # jobs = 10.24 x (M$AUD 2018)^0.5314 

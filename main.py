@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Copyright (C) 2019, Monash University, Geoscience Australia
+Copyright (C) 2019-2021, Monash University, Geoscience Australia
 Copyright (C) 2018, Stuart Walsh 
 
 Bluecap is released under the Apache License, Version 2.0 (the "License");
@@ -21,7 +21,7 @@ Please refer to individual components for more details.
 """
 
 import numpy as np
-import pylab as pl
+import matplotlib.pyplot as pl
 
 
 from Managers.ProblemManager import ProblemManager
@@ -37,7 +37,7 @@ theProblemManager.Initialize()
 
 theProblemManager.Run()
 
-# Record final state in xml
+# Record final state in xml - backwards compatibility
 if(not theProblemManager.theRegionalCalculationManager.type):
 
   if(not theProblemManager.outputType):

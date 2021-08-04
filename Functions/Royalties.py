@@ -1,5 +1,5 @@
 """
-Copyright (C) 2019, Monash University, Geoscience Australia
+Copyright (C) 2019-2021, Monash University, Geoscience Australia
 Copyright (C) 2018, Stuart Walsh 
 
 Bluecap is released under the Apache License, Version 2.0 (the "License");
@@ -31,14 +31,16 @@ def AustralianRoyalties(state, commodity,profit,value,minemouth,commodityPrice,p
   rv =0.0
   
   if (state == "NSW" or state == "ACT"):   # ACT royalties assumed equal to NSW
-    if (commodity == "Au" or commodity == "Cu" or commodity == "Ni" or commodity =="Zn" or commodity =="Pb"):
+    if (commodity == "Au" or commodity == "Cu" or commodity == "Ni" or commodity =="Zn" or commodity =="Pb" or commodity =="K2SO4" or commodity =="REO"):
       rv = minemouth*0.04   # 4% of mine mouth
+    elif (commodity == "P2O5"):
+      rv = 0.7*(value/commodityPrice)/1000. # $0.70 per tonne
   
   elif(state == "VIC"):
   
     if (commodity == "Au"):  # Vic has no royalties on gold
       rv = 0.0
-    elif (commodity == "Cu" or commodity == "Ni" or commodity =="Zn" or commodity =="Pb"):
+    elif (commodity == "Cu" or commodity == "Ni" or commodity =="Zn" or commodity =="Pb" or commodity =="P2O5" or commodity =="K2SO4" or commodity =="REO"):
       rv = 0.0275*value    # 2.75% of market value
     
   elif(state == "NT"):
@@ -55,54 +57,78 @@ def AustralianRoyalties(state, commodity,profit,value,minemouth,commodityPrice,p
       rv = value * 0.025  # actually 2.5% of market value of the contained nickel (not value of the concentrate)
 
     elif (commodity =="Cu" or commodity =="Zn" or commodity =="Pb" ):
-      rv = value * 0.025  # if sold as pure metal, otherwise 5% if sold as concentrate
+      rv = value * 0.05  # 2.5% if sold as pure metal, otherwise 5% if sold as concentrate
+    elif (commodity =="K2SO4" or commodity =="P2O5" or commodity =="REO" ):
+      rv = value * 0.05  # if sold as pure metal, otherwise 5% if sold as concentrate
 
   
   elif(state == "QLD"):
-    inStateAdjustment = 1.0
-    theUnitManager =  UnitManager()
-    if (commodity =="Au"):
-      AUDperTroyOz = theUnitManager.ConvertToBaseUnits("AUD/toz")
-      lowerThresholdPrice = 600*AUDperTroyOz
-      upperThresholdPrice = 890*AUDperTroyOz
+  
+    if (commodity == "P2O5"):
+      rv = 0.8*(value/commodityPrice)/1000. # $0.80 per tonne
+      rvb = (commodityPrice/72.50)*value
+      rv =  np.maximum(rv,rvb)
+    elif (commodity == "K2SO4" or commodity =="REO"):
+      rv = 0.025*value
+    else: 
+        inStateAdjustment = 1.0
+        theUnitManager =  UnitManager()
+        if (commodity =="Au"):
+          AUDperTroyOz = theUnitManager.ConvertToBaseUnits("AUD/toz")
+          lowerThresholdPrice = 600*AUDperTroyOz
+          upperThresholdPrice = 890*AUDperTroyOz
       
-    elif (commodity =="Cu" ):
-      AUDperTonne = theUnitManager.ConvertToBaseUnits("AUD/tonne")
-      lowerThresholdPrice = 3600*AUDperTonne
-      upperThresholdPrice = 9200*AUDperTonne
-      # Where copper is processed in Queensland to a metal content of at least 95%, the royalty payable is discounted by 20%.
-      inStateAdjustment=0.8
-    elif (commodity =="Ni" ):
-      AUDperTonne = theUnitManager.ConvertToBaseUnits("AUD/tonne")
+        elif (commodity =="Cu" ):
+          AUDperTonne = theUnitManager.ConvertToBaseUnits("AUD/tonne")
+          lowerThresholdPrice = 3600*AUDperTonne
+          upperThresholdPrice = 9200*AUDperTonne
+          # Where copper is processed in Queensland to a metal content of at least 95%, the royalty payable is discounted by 20%.
+          inStateAdjustment=0.8
+        elif (commodity =="Ni" ):
+          AUDperTonne = theUnitManager.ConvertToBaseUnits("AUD/tonne")
     
-      lowerThresholdPrice = 12500*AUDperTonne
-      upperThresholdPrice = 38100*AUDperTonne
-      # Where copper is processed in Queensland to a metal content of at least 95%, the royalty payable is discounted by 20%.
-      inStateAdjustment=0.8
-    elif (commodity =="Pb"):
-      AUDperTonne = theUnitManager.ConvertToBaseUnits("AUD/tonne")
-      lowerThresholdPrice = 1100*AUDperTonne
-      upperThresholdPrice = 2500*AUDperTonne
-      # Where zinc is processed in Queensland to a metal content of at least 95%, the royalty payable is discounted by 35%.
-      inStateAdjustment=0.65
-    elif (commodity =="Zn" ):
-      AUDperTonne = theUnitManager.ConvertToBaseUnits("AUD/tonne")
-      lowerThresholdPrice = 1900*AUDperTonne
-      upperThresholdPrice = 4400*AUDperTonne
-      # Where zinc is processed in Queensland to a metal content of at least 95%, the royalty payable is discounted by 35%.
-      inStateAdjustment=0.65
+          lowerThresholdPrice = 12500*AUDperTonne
+          upperThresholdPrice = 38100*AUDperTonne
+          # Where copper is processed in Queensland to a metal content of at least 95%, the royalty payable is discounted by 20%.
+          inStateAdjustment=0.8
+        elif (commodity =="P2O5"):
+          AUDperTonne = theUnitManager.ConvertToBaseUnits("AUD/tonne")
+          lowerThresholdPrice = 1100*AUDperTonne
+          upperThresholdPrice = 2500*AUDperTonne
+          # Where zinc is processed in Queensland to a metal content of at least 95%, the royalty payable is discounted by 35%.
+          inStateAdjustment=1.0
     
-    if(commodityPrice < lowerThresholdPrice):
-      royaltyRate = 0.025
-    elif(commodityPrice > upperThresholdPrice):
-      royaltyRate = 0.05
-    else:
-      royaltyRate = 0.025+0.025*(commodityPrice-lowerThresholdPrice)/(upperThresholdPrice-lowerThresholdPrice)
-      
-      
-    rv = value*royaltyRate
-    if (processedState == "QLD"):
-        rv*=inStateAdjustment
+        elif (commodity =="Pb"):
+          AUDperTonne = theUnitManager.ConvertToBaseUnits("AUD/tonne")
+          lowerThresholdPrice = 1100*AUDperTonne
+          upperThresholdPrice = 2500*AUDperTonne
+          # Where zinc is processed in Queensland to a metal content of at least 95%, the royalty payable is discounted by 35%.
+          inStateAdjustment=0.65
+        elif (commodity =="Zn" ):
+          AUDperTonne = theUnitManager.ConvertToBaseUnits("AUD/tonne")
+          lowerThresholdPrice = 1900*AUDperTonne
+          upperThresholdPrice = 4400*AUDperTonne
+          # Where zinc is processed in Queensland to a metal content of at least 95%, the royalty payable is discounted by 35%.
+          inStateAdjustment=0.65
+    
+        if(np.isscalar( commodityPrice) ):
+            if(commodityPrice < lowerThresholdPrice):
+              royaltyRate = 0.025
+            elif(commodityPrice > upperThresholdPrice):
+              royaltyRate = 0.05
+            else:
+              royaltyRate = 0.025+0.025*(commodityPrice-lowerThresholdPrice)/(upperThresholdPrice-lowerThresholdPrice)
+        else:
+           royaltyRate = 0.025+0.025*(commodityPrice-lowerThresholdPrice)/(upperThresholdPrice-lowerThresholdPrice)
+           indx = commodityPrice < lowerThresholdPrice
+           royaltyRate[indx] = 0.025
+           indx = commodityPrice > upperThresholdPrice
+           royaltyRate[indx] = 0.05
+           royaltyRate = royaltyRate[:len(value)]
+       
+        rv = value*royaltyRate
+        if (processedState == "QLD"):
+            rv*=inStateAdjustment
 
 
   elif(state == "TAS"):
@@ -122,10 +148,10 @@ def AustralianRoyalties(state, commodity,profit,value,minemouth,commodityPrice,p
       
       
   elif(state == "SA"):
-    if (commodity == "Au" or commodity =="Cu" or commodity =="Zn" or commodity =="Pb"):
-      rv = 0.035 * value   # assumes refined value (concentrate is 5% of value)
-    elif (commodity == "Ni"):
-      rv = 0.035 * value
+    #if (commodity == "Au" or commodity =="Cu" or commodity =="Zn" or commodity =="Pb" or commodity =="P2O5" or commodity =="K2SO4"):
+    #  rv = 0.035 * value   # assumes refined value (concentrate is 5% of value)
+    #else:
+    rv = 0.035 * value
   
   
     
